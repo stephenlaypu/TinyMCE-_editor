@@ -1,0 +1,81 @@
+{
+  "textColors": [
+    { "value": "#111827", "labelZhTw": "深黑", "labelEnUs": "Near black", "className": "neutral" },
+    { "value": "#374151", "labelZhTw": "深灰", "labelEnUs": "Dark gray", "className": "gray" },
+    { "value": "#1D4ED8", "labelZhTw": "藍", "labelEnUs": "Blue", "className": "blue" },
+    { "value": "#0F766E", "labelZhTw": "藍綠", "labelEnUs": "Teal", "className": "teal" },
+    { "value": "#166534", "labelZhTw": "綠", "labelEnUs": "Green", "className": "green" },
+    { "value": "#92400E", "labelZhTw": "棕黃", "labelEnUs": "Amber", "className": "amber" },
+    { "value": "#B91C1C", "labelZhTw": "紅", "labelEnUs": "Red", "className": "red" },
+    { "value": "#6B21A8", "labelZhTw": "紫", "labelEnUs": "Purple", "className": "purple" }
+  ],
+  "backgroundColors": [
+    { "value": "#FFFFFF", "labelZhTw": "白", "labelEnUs": "White", "className": "white" },
+    { "value": "#F1F5F9", "labelZhTw": "淺灰", "labelEnUs": "Light gray", "className": "light-gray" },
+    { "value": "#EFF6FF", "labelZhTw": "淺藍", "labelEnUs": "Light blue", "className": "light-blue" },
+    { "value": "#F0FDFA", "labelZhTw": "淺藍綠", "labelEnUs": "Light teal", "className": "light-teal" },
+    { "value": "#F0FDF4", "labelZhTw": "淺綠", "labelEnUs": "Light green", "className": "light-green" },
+    { "value": "#FFFBEB", "labelZhTw": "淺黃", "labelEnUs": "Light yellow", "className": "light-yellow" },
+    { "value": "#FEF2F2", "labelZhTw": "淺紅", "labelEnUs": "Light red", "className": "light-red" },
+    { "value": "#FAF5FF", "labelZhTw": "淺紫", "labelEnUs": "Light purple", "className": "light-purple" }
+  ],
+  "borderColors": [
+    { "value": "#64748B", "labelZhTw": "灰", "labelEnUs": "Gray", "className": "gray" },
+    { "value": "#334155", "labelZhTw": "深灰", "labelEnUs": "Dark gray", "className": "dark-gray" },
+    { "value": "#1D4ED8", "labelZhTw": "藍", "labelEnUs": "Blue", "className": "blue" },
+    { "value": "#0F766E", "labelZhTw": "藍綠", "labelEnUs": "Teal", "className": "teal" },
+    { "value": "#166534", "labelZhTw": "綠", "labelEnUs": "Green", "className": "green" },
+    { "value": "#92400E", "labelZhTw": "棕黃", "labelEnUs": "Amber", "className": "amber" },
+    { "value": "#B91C1C", "labelZhTw": "紅", "labelEnUs": "Red", "className": "red" },
+    { "value": "#6B21A8", "labelZhTw": "紫", "labelEnUs": "Purple", "className": "purple" }
+  ],
+  "borderStyles": [
+    { "value": "solid", "title": "Solid", "className": "solid" },
+    { "value": "dotted", "title": "Dotted", "className": "dotted" },
+    { "value": "dashed", "title": "Dashed", "className": "dashed" }
+  ],
+  "verticalAlignments": [
+    { "value": "top", "className": "top" },
+    { "value": "middle", "className": "middle" },
+    { "value": "bottom", "className": "bottom" }
+  ],
+  "listStyles": [
+    { "value": "disc", "className": "disc" },
+    { "value": "circle", "className": "circle" },
+    { "value": "square", "className": "square" },
+    { "value": "decimal", "className": "decimal" },
+    { "value": "lower-alpha", "className": "lower-alpha" },
+    { "value": "upper-alpha", "className": "upper-alpha" },
+    { "value": "lower-roman", "className": "lower-roman" },
+    { "value": "upper-roman", "className": "upper-roman" },
+    { "value": "lower-greek", "className": "lower-greek" }
+  ],
+  "fontFamilies": [
+    { "title": "預設字體", "value": "cms-font-default", "fontFamily": null },
+    { "title": "思源黑體", "value": "cms-font-noto-sans-tc", "fontFamily": "\"Noto Sans TC\", sans-serif" },
+    { "title": "微軟正黑體", "value": "cms-font-microsoft-jhenghei", "fontFamily": "\"Microsoft JhengHei\", sans-serif" },
+    { "title": "新細明體", "value": "cms-font-pmingliu", "fontFamily": "PMingLiU, serif" },
+    { "title": "等寬字型", "value": "cms-font-monospace", "fontFamily": "monospace" },
+    { "title": "Arial", "value": "cms-font-arial", "fontFamily": "Arial, sans-serif" },
+    { "title": "Comic Sans MS", "value": "cms-font-comic-sans-ms", "fontFamily": "\"Comic Sans MS\", cursive" },
+    { "title": "Courier New", "value": "cms-font-courier-new", "fontFamily": "\"Courier New\", monospace" },
+    { "title": "Georgia", "value": "cms-font-georgia", "fontFamily": "Georgia, serif" },
+    { "title": "Helvetica", "value": "cms-font-helvetica", "fontFamily": "Helvetica, Arial, sans-serif" },
+    { "title": "Lucida Sans Unicode", "value": "cms-font-lucida-sans-unicode", "fontFamily": "\"Lucida Sans Unicode\", \"Lucida Grande\", sans-serif" },
+    { "title": "Tahoma", "value": "cms-font-tahoma", "fontFamily": "Tahoma, sans-serif" },
+    { "title": "Times New Roman", "value": "cms-font-times-new-roman", "fontFamily": "\"Times New Roman\", serif" },
+    { "title": "Trebuchet MS", "value": "cms-font-trebuchet-ms", "fontFamily": "\"Trebuchet MS\", sans-serif" },
+    { "title": "Verdana", "value": "cms-font-verdana", "fontFamily": "Verdana, sans-serif" }
+  ],
+  "fontSizes": [
+    { "title": "預設大小", "className": "cms-font-size-default", "fontSize": null },
+    { "title": "8px", "className": "cms-font-size-8px", "fontSize": "0.5rem" },
+    { "title": "12px", "className": "cms-font-size-12px", "fontSize": "0.75rem" },
+    { "title": "14px", "className": "cms-font-size-14px", "fontSize": "0.875rem" },
+    { "title": "16px", "className": "cms-font-size-16px", "fontSize": "1rem" },
+    { "title": "18px", "className": "cms-font-size-18px", "fontSize": "1.125rem" },
+    { "title": "24px", "className": "cms-font-size-24px", "fontSize": "1.5rem" },
+    { "title": "32px", "className": "cms-font-size-32px", "fontSize": "2rem" },
+    { "title": "48px", "className": "cms-font-size-48px", "fontSize": "3rem" }
+  ]
+}

@@ -1,0 +1,201 @@
+/* Generated from src/editor/tinymce/cmsFormattingTokens.json. */
+
+/* Alignment */
+.cms-align-left { text-align: left; }
+.cms-align-center { text-align: center; }
+.cms-align-right { text-align: right; }
+.cms-align-justify { text-align: justify; }
+
+.cms-row-align-left > :is(td, th),
+.cms-cell-align-left { text-align: left; }
+.cms-row-align-center > :is(td, th),
+.cms-cell-align-center { text-align: center; }
+.cms-row-align-right > :is(td, th),
+.cms-cell-align-right { text-align: right; }
+.cms-row-align-justify > :is(td, th),
+.cms-cell-align-justify { text-align: justify; }
+
+img.cms-align-left,
+figure.cms-align-left,
+table.cms-table-align-left { margin-left: 0; margin-right: auto; }
+img.cms-align-center,
+figure.cms-align-center,
+table.cms-table-align-center { margin-left: auto; margin-right: auto; }
+img.cms-align-right,
+figure.cms-align-right,
+table.cms-table-align-right { margin-left: auto; margin-right: 0; }
+
+/* Text colors */
+.cms-color-neutral { color: #111827; }
+.cms-color-gray { color: #374151; }
+.cms-color-blue { color: #1D4ED8; }
+.cms-color-teal { color: #0F766E; }
+.cms-color-green { color: #166534; }
+.cms-color-amber { color: #92400E; }
+.cms-color-red { color: #B91C1C; }
+.cms-color-purple { color: #6B21A8; }
+
+/* Background colors */
+.cms-bg-white { background-color: #FFFFFF; }
+.cms-table-bg-white { background-color: #FFFFFF; }
+.cms-table tr.cms-row-bg-white > th,
+.cms-table tr.cms-row-bg-white > td { background-color: #FFFFFF; }
+.cms-cell-bg-white { background-color: #FFFFFF; }
+.cms-bg-light-gray { background-color: #F1F5F9; }
+.cms-table-bg-light-gray { background-color: #F1F5F9; }
+.cms-table tr.cms-row-bg-light-gray > th,
+.cms-table tr.cms-row-bg-light-gray > td { background-color: #F1F5F9; }
+.cms-cell-bg-light-gray { background-color: #F1F5F9; }
+.cms-bg-light-blue { background-color: #EFF6FF; }
+.cms-table-bg-light-blue { background-color: #EFF6FF; }
+.cms-table tr.cms-row-bg-light-blue > th,
+.cms-table tr.cms-row-bg-light-blue > td { background-color: #EFF6FF; }
+.cms-cell-bg-light-blue { background-color: #EFF6FF; }
+.cms-bg-light-teal { background-color: #F0FDFA; }
+.cms-table-bg-light-teal { background-color: #F0FDFA; }
+.cms-table tr.cms-row-bg-light-teal > th,
+.cms-table tr.cms-row-bg-light-teal > td { background-color: #F0FDFA; }
+.cms-cell-bg-light-teal { background-color: #F0FDFA; }
+.cms-bg-light-green { background-color: #F0FDF4; }
+.cms-table-bg-light-green { background-color: #F0FDF4; }
+.cms-table tr.cms-row-bg-light-green > th,
+.cms-table tr.cms-row-bg-light-green > td { background-color: #F0FDF4; }
+.cms-cell-bg-light-green { background-color: #F0FDF4; }
+.cms-bg-light-yellow { background-color: #FFFBEB; }
+.cms-table-bg-light-yellow { background-color: #FFFBEB; }
+.cms-table tr.cms-row-bg-light-yellow > th,
+.cms-table tr.cms-row-bg-light-yellow > td { background-color: #FFFBEB; }
+.cms-cell-bg-light-yellow { background-color: #FFFBEB; }
+.cms-bg-light-red { background-color: #FEF2F2; }
+.cms-table-bg-light-red { background-color: #FEF2F2; }
+.cms-table tr.cms-row-bg-light-red > th,
+.cms-table tr.cms-row-bg-light-red > td { background-color: #FEF2F2; }
+.cms-cell-bg-light-red { background-color: #FEF2F2; }
+.cms-bg-light-purple { background-color: #FAF5FF; }
+.cms-table-bg-light-purple { background-color: #FAF5FF; }
+.cms-table tr.cms-row-bg-light-purple > th,
+.cms-table tr.cms-row-bg-light-purple > td { background-color: #FAF5FF; }
+.cms-cell-bg-light-purple { background-color: #FAF5FF; }
+
+/* Border colors */
+.cms-border-gray { border-color: #64748B; }
+.cms-table-border-gray,
+.cms-table-border-gray > tr > :is(th, td),
+.cms-table-border-gray > :is(thead, tbody, tfoot) > tr > :is(th, td) { border-color: #64748B; }
+.cms-table tr.cms-row-border-gray,
+.cms-table tr.cms-row-border-gray > :is(th, td) { border-color: #64748B; }
+.cms-cell-border-gray { border-color: #64748B; }
+.cms-border-dark-gray { border-color: #334155; }
+.cms-table-border-dark-gray,
+.cms-table-border-dark-gray > tr > :is(th, td),
+.cms-table-border-dark-gray > :is(thead, tbody, tfoot) > tr > :is(th, td) { border-color: #334155; }
+.cms-table tr.cms-row-border-dark-gray,
+.cms-table tr.cms-row-border-dark-gray > :is(th, td) { border-color: #334155; }
+.cms-cell-border-dark-gray { border-color: #334155; }
+.cms-border-blue { border-color: #1D4ED8; }
+.cms-table-border-blue,
+.cms-table-border-blue > tr > :is(th, td),
+.cms-table-border-blue > :is(thead, tbody, tfoot) > tr > :is(th, td) { border-color: #1D4ED8; }
+.cms-table tr.cms-row-border-blue,
+.cms-table tr.cms-row-border-blue > :is(th, td) { border-color: #1D4ED8; }
+.cms-cell-border-blue { border-color: #1D4ED8; }
+.cms-border-teal { border-color: #0F766E; }
+.cms-table-border-teal,
+.cms-table-border-teal > tr > :is(th, td),
+.cms-table-border-teal > :is(thead, tbody, tfoot) > tr > :is(th, td) { border-color: #0F766E; }
+.cms-table tr.cms-row-border-teal,
+.cms-table tr.cms-row-border-teal > :is(th, td) { border-color: #0F766E; }
+.cms-cell-border-teal { border-color: #0F766E; }
+.cms-border-green { border-color: #166534; }
+.cms-table-border-green,
+.cms-table-border-green > tr > :is(th, td),
+.cms-table-border-green > :is(thead, tbody, tfoot) > tr > :is(th, td) { border-color: #166534; }
+.cms-table tr.cms-row-border-green,
+.cms-table tr.cms-row-border-green > :is(th, td) { border-color: #166534; }
+.cms-cell-border-green { border-color: #166534; }
+.cms-border-amber { border-color: #92400E; }
+.cms-table-border-amber,
+.cms-table-border-amber > tr > :is(th, td),
+.cms-table-border-amber > :is(thead, tbody, tfoot) > tr > :is(th, td) { border-color: #92400E; }
+.cms-table tr.cms-row-border-amber,
+.cms-table tr.cms-row-border-amber > :is(th, td) { border-color: #92400E; }
+.cms-cell-border-amber { border-color: #92400E; }
+.cms-border-red { border-color: #B91C1C; }
+.cms-table-border-red,
+.cms-table-border-red > tr > :is(th, td),
+.cms-table-border-red > :is(thead, tbody, tfoot) > tr > :is(th, td) { border-color: #B91C1C; }
+.cms-table tr.cms-row-border-red,
+.cms-table tr.cms-row-border-red > :is(th, td) { border-color: #B91C1C; }
+.cms-cell-border-red { border-color: #B91C1C; }
+.cms-border-purple { border-color: #6B21A8; }
+.cms-table-border-purple,
+.cms-table-border-purple > tr > :is(th, td),
+.cms-table-border-purple > :is(thead, tbody, tfoot) > tr > :is(th, td) { border-color: #6B21A8; }
+.cms-table tr.cms-row-border-purple,
+.cms-table tr.cms-row-border-purple > :is(th, td) { border-color: #6B21A8; }
+.cms-cell-border-purple { border-color: #6B21A8; }
+
+/* Border styles */
+.cms-border-style-solid { border-style: solid; }
+.cms-table-border-style-solid,
+.cms-table-border-style-solid > tr > :is(th, td),
+.cms-table-border-style-solid > :is(thead, tbody, tfoot) > tr > :is(th, td) { border-style: solid; }
+.cms-table tr.cms-row-border-style-solid,
+.cms-table tr.cms-row-border-style-solid > :is(th, td) { border-style: solid; }
+.cms-cell-border-style-solid { border-style: solid; }
+.cms-border-style-dotted { border-style: dotted; }
+.cms-table-border-style-dotted,
+.cms-table-border-style-dotted > tr > :is(th, td),
+.cms-table-border-style-dotted > :is(thead, tbody, tfoot) > tr > :is(th, td) { border-style: dotted; }
+.cms-table tr.cms-row-border-style-dotted,
+.cms-table tr.cms-row-border-style-dotted > :is(th, td) { border-style: dotted; }
+.cms-cell-border-style-dotted { border-style: dotted; }
+.cms-border-style-dashed { border-style: dashed; }
+.cms-table-border-style-dashed,
+.cms-table-border-style-dashed > tr > :is(th, td),
+.cms-table-border-style-dashed > :is(thead, tbody, tfoot) > tr > :is(th, td) { border-style: dashed; }
+.cms-table tr.cms-row-border-style-dashed,
+.cms-table tr.cms-row-border-style-dashed > :is(th, td) { border-style: dashed; }
+.cms-cell-border-style-dashed { border-style: dashed; }
+
+/* Cell vertical alignment */
+.cms-cell-valign-top { vertical-align: top; }
+.cms-cell-valign-middle { vertical-align: middle; }
+.cms-cell-valign-bottom { vertical-align: bottom; }
+
+/* List styles */
+.cms-list-disc { list-style-type: disc; }
+.cms-list-circle { list-style-type: circle; }
+.cms-list-square { list-style-type: square; }
+.cms-list-decimal { list-style-type: decimal; }
+.cms-list-lower-alpha { list-style-type: lower-alpha; }
+.cms-list-upper-alpha { list-style-type: upper-alpha; }
+.cms-list-lower-roman { list-style-type: lower-roman; }
+.cms-list-upper-roman { list-style-type: upper-roman; }
+.cms-list-lower-greek { list-style-type: lower-greek; }
+
+/* Font families */
+.cms-font-noto-sans-tc { font-family: "Noto Sans TC", sans-serif; }
+.cms-font-microsoft-jhenghei { font-family: "Microsoft JhengHei", sans-serif; }
+.cms-font-pmingliu { font-family: PMingLiU, serif; }
+.cms-font-monospace { font-family: monospace; }
+.cms-font-arial { font-family: Arial, sans-serif; }
+.cms-font-comic-sans-ms { font-family: "Comic Sans MS", cursive; }
+.cms-font-courier-new { font-family: "Courier New", monospace; }
+.cms-font-georgia { font-family: Georgia, serif; }
+.cms-font-helvetica { font-family: Helvetica, Arial, sans-serif; }
+.cms-font-lucida-sans-unicode { font-family: "Lucida Sans Unicode", "Lucida Grande", sans-serif; }
+.cms-font-tahoma { font-family: Tahoma, sans-serif; }
+.cms-font-times-new-roman { font-family: "Times New Roman", serif; }
+.cms-font-trebuchet-ms { font-family: "Trebuchet MS", sans-serif; }
+.cms-font-verdana { font-family: Verdana, sans-serif; }
+
+/* Font sizes */
+.cms-font-size-8px { font-size: 0.5rem; }
+.cms-font-size-12px { font-size: 0.75rem; }
+.cms-font-size-14px { font-size: 0.875rem; }
+.cms-font-size-16px { font-size: 1rem; }
+.cms-font-size-18px { font-size: 1.125rem; }
+.cms-font-size-24px { font-size: 1.5rem; }
+.cms-font-size-32px { font-size: 2rem; }
+.cms-font-size-48px { font-size: 3rem; }

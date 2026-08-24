@@ -1,0 +1,194 @@
+/* anchor list */
+.anchor_list {
+  float: left;
+  width: 100%;
+  list-style: none;
+  margin: 0 0 5px 0;
+  padding-left: 0;
+}
+
+.anchor_list li {
+  float: left;
+}
+
+.anchor_list a {
+  float: left;
+  padding: 5px 15px;
+  border-radius: 5px;
+  color: #333;
+  margin: 5px;
+  border: solid #ccc 1px;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.anchor_list a:hover,
+.anchor_list a:focus {
+  background: #eee;
+  color: #333;
+}
+
+.anchor_list a.active {
+  background: #3e76b6;
+  color: #fff;
+  border-color: #3e76b6;
+}
+
+.cms-clear {
+  clear: both;
+}
+
+
+/* CMS Table Base */
+
+.cms-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+
+.cms-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 0;
+}
+
+.cms-table.cms-table-width-25 { width: 25%; }
+.cms-table.cms-table-width-50 { width: 50%; }
+.cms-table.cms-table-width-75 { width: 75%; }
+.cms-table.cms-table-width-100 { width: 100%; }
+
+.cms-table col.cms-cell-width-20,
+.cms-table th.cms-cell-width-20,
+.cms-table td.cms-cell-width-20 { width: 20%; }
+.cms-table col.cms-cell-width-25,
+.cms-table th.cms-cell-width-25,
+.cms-table td.cms-cell-width-25 { width: 25%; }
+.cms-table col.cms-cell-width-33,
+.cms-table th.cms-cell-width-33,
+.cms-table td.cms-cell-width-33 { width: 33%; }
+.cms-table col.cms-cell-width-40,
+.cms-table th.cms-cell-width-40,
+.cms-table td.cms-cell-width-40 { width: 40%; }
+.cms-table col.cms-cell-width-50,
+.cms-table th.cms-cell-width-50,
+.cms-table td.cms-cell-width-50 { width: 50%; }
+.cms-table col.cms-cell-width-60,
+.cms-table th.cms-cell-width-60,
+.cms-table td.cms-cell-width-60 { width: 60%; }
+.cms-table col.cms-cell-width-66,
+.cms-table th.cms-cell-width-66,
+.cms-table td.cms-cell-width-66 { width: 66%; }
+.cms-table col.cms-cell-width-75,
+.cms-table th.cms-cell-width-75,
+.cms-table td.cms-cell-width-75 { width: 75%; }
+.cms-table col.cms-cell-width-80,
+.cms-table th.cms-cell-width-80,
+.cms-table td.cms-cell-width-80 { width: 80%; }
+.cms-table col.cms-cell-width-100,
+.cms-table th.cms-cell-width-100,
+.cms-table td.cms-cell-width-100 { width: 100%; }
+
+:where(.cms-table th),
+:where(.cms-table td) {
+  padding: 8px;
+  line-height: 170%;
+  vertical-align: middle;
+}
+
+.cms-table.cms-table-padding-0 :is(th, td) { padding: 0; }
+.cms-table.cms-table-padding-4 :is(th, td) { padding: 4px; }
+.cms-table.cms-table-padding-8 :is(th, td) { padding: 8px; }
+.cms-table.cms-table-padding-12 :is(th, td) { padding: 12px; }
+.cms-table.cms-table-padding-16 :is(th, td) { padding: 16px; }
+
+:where(.cms-table th) {
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  background: #eee;
+  color: #333;
+}
+
+/* Table Border */
+
+.cms-table.is-bordered,
+.cms-table.is-bordered caption {
+  border: 0;
+}
+
+.cms-table.is-bordered :is(th, td) {
+  border: 1px solid #64748b;
+}
+
+.cms-table.cms-table-border-width-0 :is(th, td) { border-width: 0; }
+.cms-table.is-bordered.cms-table-border-width-1 :is(th, td) { border-width: 1px; }
+.cms-table.is-bordered.cms-table-border-width-2 :is(th, td) { border-width: 2px; }
+.cms-table.is-bordered.cms-table-border-width-4 :is(th, td) { border-width: 4px; }
+
+/* Table Striped */
+
+:where(.cms-table.is-striped tbody tr:nth-child(odd) td) {
+  background: #f1f6f9;
+}
+
+
+/* Table Hover */
+
+.cms-table.is-hover tbody tr:hover td {
+  background: #1366a1;
+  color: #fff;
+}
+
+.cms-table.is-hover tbody tr:hover a {
+  color: #fff;
+}
+
+
+/* Responsive - Horizontal Scroll */
+
+@media (max-width: 768px) {
+  .cms-table-scroll .cms-table {
+    min-width: 700px;
+  }
+}
+
+
+/* Responsive - Card Layout */
+
+@media (max-width: 768px) {
+  .cms-table.is-card thead {
+    display: none;
+  }
+
+  .cms-table.is-card tbody,
+  .cms-table.is-card tr,
+  .cms-table.is-card td,
+  .cms-table.is-card th {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .cms-table.is-card tbody tr {
+    margin-bottom: 16px;
+    border: 1px solid #64748b;
+  }
+
+  .cms-table.is-card tbody td,
+  .cms-table.is-card tbody th {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .cms-table.is-card tbody td::before,
+  .cms-table.is-card tbody th::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    min-width: 7em;
+    font-weight: 500;
+  }
+}

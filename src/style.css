@@ -1,0 +1,132 @@
+:root {
+  font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  color: #17231d;
+  background: #eef2e8;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 12% 4%, rgba(232, 181, 91, 0.2), transparent 28rem),
+    linear-gradient(135deg, #f5f1e7 0%, #e8efe5 55%, #dbe7df 100%);
+}
+
+.page-shell {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 48px 0 64px;
+}
+
+.page-header {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.header-controls {
+  display: grid;
+  justify-items: end;
+  gap: 14px;
+}
+
+.locale-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #58645d;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.locale-control select {
+  border: 1px solid rgba(33, 75, 58, 0.3);
+  border-radius: 999px;
+  padding: 0.55rem 2rem 0.55rem 0.8rem;
+  color: #17231d;
+  background: rgba(255, 255, 255, 0.75);
+  font: inherit;
+  cursor: pointer;
+}
+
+.actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.7rem 1.05rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.actions button:focus-visible,
+.html-panel summary:focus-visible {
+  outline: 3px solid #d89525;
+  outline-offset: 3px;
+}
+
+.secondary {
+  color: #f6f4eb;
+  background: #214b3a;
+}
+
+.danger {
+  color: #793629;
+  background: #f1d9cd;
+}
+
+.html-panel {
+  margin-top: 18px;
+  border: 1px solid rgba(33, 75, 58, 0.18);
+  border-radius: 14px;
+  background: rgba(250, 249, 243, 0.72);
+}
+
+.html-panel summary {
+  padding: 16px 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.html-panel pre {
+  max-height: 320px;
+  overflow: auto;
+  margin: 0;
+  padding: 18px;
+  border-top: 1px solid rgba(33, 75, 58, 0.14);
+  color: #dceee4;
+  background: #17231d;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 720px) {
+  .page-shell {
+    width: min(100% - 20px, 1180px);
+    padding-top: 28px;
+  }
+
+  .page-header {
+    align-items: start;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .header-controls {
+    justify-items: start;
+  }
+}

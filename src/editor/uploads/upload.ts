@@ -21,6 +21,33 @@ export const validateUploadFile = (file: File, context: UploadContext) => {
   }
 }
 
+const isSafeUploadUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value, window.location.href)
+    return url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'blob:'
+  } catch {
+    return false
+  }
+}
+
+export const validateUploadResult = (result: UploadResult): UploadResult => {
+  if (!result.src.trim() || !isSafeUploadUrl(result.src)) {
+    throw new UploadValidationError('invalidResponse')
+  }
+
+  const hasFileGuid = typeof result.fileGuid === 'string' && Boolean(result.fileGuid.trim())
+  const hasFileState = result.fileState === 'active' || result.fileState === 'temporary'
+  if (hasFileGuid !== hasFileState) {
+    throw new UploadValidationError('invalidResponse')
+  }
+
+  return {
+    ...result,
+    src: result.src.trim(),
+    ...(hasFileGuid ? { fileGuid: result.fileGuid?.trim() } : {}),
+  }
+}
+
 export const uploadFile = async (
   adapter: UploadAdapter | undefined,
   file: File,
@@ -33,5 +60,5 @@ export const uploadFile = async (
     throw new UploadValidationError('missingAdapter')
   }
 
-  return adapter.upload(file, context, onProgress)
+  return validateUploadResult(await adapter.upload(file, context, onProgress))
 }

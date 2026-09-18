@@ -1,12 +1,35 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { AstNode, Editor as TinyMCEEditor, RawEditorOptions } from 'tinymce'
-import type { AdvancedEditorLabels } from './components/AdvancedContentEditor.vue'
+import type { AdvancedEditorLabels, CodeTab } from './components/AdvancedContentEditor.vue'
 import TinyMceEditor from './components/TinyMceEditor.vue'
 import { editorMessages, type AppLocale } from './i18n'
+import {
+  defaultEditorPolicy,
+  resolveEditorPolicy,
+  type EditorPolicy,
+  type EditorPolicyOverride,
+} from './policy'
 import type { EditorContent } from './types/editorContent'
-import type { UploadAdapter } from './uploads/types'
+import {
+  analyzeContentCapabilities,
+  evaluateContentForPublication,
+  type PublicationPolicy,
+} from './contentPolicy'
+import { applyBasicHtmlChange, extractLegacyStyles } from './workspaceContent'
+import type { UploadAdapter, UploadResult } from './uploads/types'
+import { applyUploadedMediaMetadata } from './mediaUploadMetadata'
+import { extractMediaReferenceManifest } from './mediaReferences'
 import {
   allowedIframeDomains as defaultAllowedIframeDomains,
   iframeSandboxExclusions,
@@ -23,8 +46,19 @@ import { registerCmsTableStyles, type CmsTableStyleLabels } from './tinymce/regi
 import { registerAccessibilityCheck } from './tinymce/registerAccessibilityCheck'
 import { installTableDialogFieldGuard } from './tinymce/installTableDialogFieldGuard'
 import { installEditorAccessibilityFixes } from './tinymce/installEditorAccessibilityFixes'
+import { installToolbarTooltipDismiss } from './tinymce/installToolbarTooltipDismiss'
 import { normalizeCmsTableSizing } from './tinymce/cmsTableSizing'
 import { loadTinyMce } from './tinymce/loadTinyMce'
+import {
+  withoutContextMenuItems,
+  withoutToolbarItems,
+  withoutToolbarTokenItems,
+} from './tinymce/editorOptionPolicy'
+import {
+  withoutMediaInsertionContextMenu,
+  withoutMediaInsertionPlugins,
+  withoutMediaInsertionToolbar,
+} from './tinymce/mediaInsertionPolicy'
 import {
   cellBackgroundColorClassByValue,
   cellBackgroundColorClasses,
@@ -50,6 +84,7 @@ import {
   editorFontFamilyFormats,
   editorFontSizeClasses,
   editorFontSizeFormats,
+  relativeEditorFontSizeFormats,
   editorListStyleClassByValue,
   editorListStyleClasses,
   getEditorBackgroundColorMap,
@@ -80,27 +115,43 @@ const props = withDefaults(
   defineProps<{
     modelValue: EditorContent
     locale?: AppLocale
-    mode?: 'strict' | 'normal'
-    accessibilityProfile?: 'content-quality' | 'tw-aa-110'
+    mode?: EditorPolicy['mode']
+    accessibilityProfile?: EditorPolicy['accessibilityProfile']
+    editorPolicy?: EditorPolicyOverride
     uploadAdapter?: UploadAdapter
     assetBaseUrl?: string
     licenseKey?: string
     height?: number
     initialWorkspaceMode?: 'basic' | 'advanced'
+    advancedWorkspaceEnabled?: boolean
+    customCssEnabled?: boolean
+    customJavaScriptEnabled?: boolean
+    cmsTemplatesEnabled?: boolean
+    cmsTableStylesEnabled?: boolean
     allowedIframeDomains?: readonly string[]
+    mediaInsertion?: EditorPolicy['mediaInsertion']
     tinymceOptions?: Partial<RawEditorOptions>
     disabled?: boolean
     readonly?: boolean
   }>(),
   {
     locale: 'zh-TW',
-    mode: 'strict',
-    accessibilityProfile: 'content-quality',
+    mode: defaultEditorPolicy.mode,
+    accessibilityProfile: defaultEditorPolicy.accessibilityProfile,
+    editorPolicy: undefined,
+    uploadAdapter: undefined,
     assetBaseUrl: '/cms-editor',
     licenseKey: 'gpl',
     height: 620,
     initialWorkspaceMode: 'basic',
+    advancedWorkspaceEnabled: defaultEditorPolicy.advancedWorkspaceEnabled,
+    customCssEnabled: defaultEditorPolicy.customCssEnabled,
+    customJavaScriptEnabled: defaultEditorPolicy.customJavaScriptEnabled,
+    cmsTemplatesEnabled: defaultEditorPolicy.cmsTemplatesEnabled,
+    cmsTableStylesEnabled: defaultEditorPolicy.cmsTableStylesEnabled,
     allowedIframeDomains: () => [...defaultAllowedIframeDomains],
+    mediaInsertion: defaultEditorPolicy.mediaInsertion,
+    tinymceOptions: undefined,
     disabled: false,
     readonly: false,
   },
@@ -121,16 +172,78 @@ const { locale, t } = useI18n({
   fallbackLocale: 'en-US',
   messages: editorMessages,
 })
-const editorMode = props.mode
+const resolvedEditorPolicy = resolveEditorPolicy(
+  {
+    mode: props.mode,
+    accessibilityProfile: props.accessibilityProfile,
+    advancedWorkspaceEnabled: props.advancedWorkspaceEnabled,
+    customCssEnabled: props.customCssEnabled,
+    customJavaScriptEnabled: props.customJavaScriptEnabled,
+    mediaInsertion: props.mediaInsertion,
+    cmsTemplatesEnabled: props.cmsTemplatesEnabled,
+    cmsTableStylesEnabled: props.cmsTableStylesEnabled,
+  },
+  props.editorPolicy,
+)
+const editorMode = resolvedEditorPolicy.mode
 const isStrictEditorMode = editorMode === 'strict'
+const isAdvancedWorkspaceEnabled = resolvedEditorPolicy.advancedWorkspaceEnabled
+const advancedCodeTabs: CodeTab[] = [
+  'html',
+  ...(resolvedEditorPolicy.customCssEnabled ? (['css'] as const) : []),
+  ...(resolvedEditorPolicy.customJavaScriptEnabled ? (['js'] as const) : []),
+]
 const AdvancedContentEditor = defineAsyncComponent(
   () => import('./components/AdvancedContentEditor.vue'),
 )
 const workspaceMode = ref<'basic' | 'advanced'>(
-  isStrictEditorMode ? 'basic' : props.initialWorkspaceMode,
+  isAdvancedWorkspaceEnabled ? props.initialWorkspaceMode : 'basic',
 )
-const accessibilityProfile = props.accessibilityProfile
+const activeAccessibilityProfile = resolvedEditorPolicy.accessibilityProfile
 const uploadAdapter = props.uploadAdapter
+const mediaInsertionEnabled = resolvedEditorPolicy.mediaInsertion === 'enabled'
+const areCmsTemplatesEnabled = resolvedEditorPolicy.cmsTemplatesEnabled
+const areCmsTableStylesEnabled = resolvedEditorPolicy.cmsTableStylesEnabled
+const disabledOptionalToolbarItems = new Set([
+  ...(areCmsTemplatesEnabled ? [] : ['cmstemplates']),
+  ...(areCmsTableStylesEnabled ? [] : ['cmstablestyles']),
+])
+const disabledOptionalContextMenuItems = new Set(disabledOptionalToolbarItems)
+
+const defaultPlugins = [
+  'advlist',
+  'autolink',
+  'charmap',
+  'code',
+  'fullscreen',
+  'help',
+  'image',
+  'link',
+  'lists',
+  'media',
+  'preview',
+  'searchreplace',
+  'table',
+  'visualblocks',
+  'wordcount',
+]
+const defaultToolbar =
+  'undo redo | bold italic strikethrough | blocks fontfamily fontsize | alignleft aligncenter alignright alignjustify | bullist numlist blockquote | forecolor backcolor | link image insertvideo embediframe table cmstablestyles cmstemplates | code preview fullscreen a11ycheck'
+const defaultContextMenu = 'cmstablestyles cmstemplates cmsmedia cmslink image table'
+const defaultTableToolbar =
+  'tableprops tablecellprops cmstablestyles tablecaption | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tabledelete'
+const editorContentSecurityPolicy = [
+  "default-src 'none'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' https: data: blob:",
+  "media-src 'self' https: data: blob:",
+  'frame-src https:',
+  "font-src 'self' data:",
+  "connect-src 'none'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ')
 
 const cloneContent = (value: EditorContent): EditorContent => ({ ...value })
 const resolveAssetUrl = (path: string): string => {
@@ -146,6 +259,12 @@ const basicSourceBodyHtml = ref(content.value.html)
 const basicLegacyCss = ref('')
 const basicHasUserChanges = ref(false)
 const basicHasRoundTripRisk = ref(false)
+const uploadedMediaBySource = new Map<string, UploadResult>()
+
+const rememberUploadedMedia = (result: UploadResult) => {
+  uploadedMediaBySource.set(result.src, result)
+}
+
 const isAdvancedCssEnabledInBasic = ref(true)
 const advancedInitialTab = ref<'html' | 'css' | 'js'>('html')
 const editorRoot = ref<HTMLElement | null>(null)
@@ -177,42 +296,13 @@ const ensureTinyMceReady = async () => {
   }
 }
 
-const hasAdvancedContent = computed(
-  () => Boolean(content.value.css.trim() || basicLegacyCss.value.trim() || content.value.js.trim()),
+const hasAdvancedContent = computed(() =>
+  Boolean(content.value.css.trim() || basicLegacyCss.value.trim() || content.value.js.trim()),
 )
 
 const advancedCssForBasic = computed(() =>
   [content.value.css.trim(), basicLegacyCss.value.trim()].filter(Boolean).join('\n\n'),
 )
-
-const extractLegacyStyles = (source: string) => {
-  const template = document.createElement('template')
-  template.innerHTML = source
-  const styles = Array.from(template.content.querySelectorAll('style'))
-  const css = styles
-    .map((style) => style.textContent?.trim() || '')
-    .filter(Boolean)
-    .join('\n\n')
-
-  styles.forEach((style) => style.remove())
-
-  return {
-    html: template.innerHTML,
-    css,
-    didExtract: styles.length > 0,
-  }
-}
-
-const mergeCss = (...sources: string[]) => {
-  const result: string[] = []
-  sources.forEach((source) => {
-    const value = source.trim()
-    if (value && !result.includes(value)) {
-      result.push(value)
-    }
-  })
-  return result.join('\n\n')
-}
 
 const normalizeHtmlForComparison = (source: string) => {
   const template = document.createElement('template')
@@ -249,13 +339,12 @@ const advancedEditorLabels = computed<AdvancedEditorLabels>(() => ({
   redo: t('app.advanced.redo'),
   search: t('app.advanced.search'),
   syntaxError: t('app.advanced.syntaxError'),
+  absoluteFontSizeUnit: (value: string) => t('app.advanced.absoluteFontSizeUnit', { value }),
   tabErrorLabel: (tab: string, count: number) =>
-    t(
-      count === 1
-        ? 'app.advanced.tabErrorLabelSingle'
-        : 'app.advanced.tabErrorLabelMultiple',
-      { tab, count },
-    ),
+    t(count === 1 ? 'app.advanced.tabErrorLabelSingle' : 'app.advanced.tabErrorLabelMultiple', {
+      tab,
+      count,
+    }),
   preview: t('app.advanced.preview'),
   refreshPreview: t('app.advanced.refreshPreview'),
   previewError: t('app.advanced.previewError'),
@@ -269,8 +358,7 @@ const advancedEditorLabels = computed<AdvancedEditorLabels>(() => ({
   collapseCode: t('app.advanced.collapseCode'),
   expandCode: t('app.advanced.expandCode'),
   resizePanels: t('app.advanced.resizePanels'),
-  resizeValue: (code: number, preview: number) =>
-    t('app.advanced.resizeValue', { code, preview }),
+  resizeValue: (code: number, preview: number) => t('app.advanced.resizeValue', { code, preview }),
   fullscreen: t('app.advanced.fullscreen'),
   exitFullscreen: t('app.advanced.exitFullscreen'),
 }))
@@ -588,8 +676,7 @@ const managedInlineClassNames = [
   ...cellVerticalAlignClasses,
 ]
 
-const isManagedInlineClassName = (className: string) =>
-  managedInlineClassNames.includes(className)
+const isManagedInlineClassName = (className: string) => managedInlineClassNames.includes(className)
 
 const hasManagedInlineClass = (element: Element) =>
   Array.from(element.classList).some(isManagedInlineClassName)
@@ -979,7 +1066,10 @@ const normalizeManagedColorStyleElement = (element: HTMLElement): boolean => {
     didChange = true
   }
 
-  if (listStyleTypeValue && (elementName === 'ul' || elementName === 'ol' || elementName === 'li')) {
+  if (
+    listStyleTypeValue &&
+    (elementName === 'ul' || elementName === 'ol' || elementName === 'li')
+  ) {
     removeClasses(element, editorListStyleClasses)
   }
 
@@ -1218,26 +1308,15 @@ const editorConfig = computed<RawEditorOptions>(() => ({
   },
   // menubar: 'file edit view insert format tools table help',
   menubar: props.tinymceOptions?.menubar ?? false,
-  plugins: props.tinymceOptions?.plugins ?? [
-    'advlist',
-    'autolink',
-    'charmap',
-    'code',
-    'fullscreen',
-    'help',
-    'image',
-    'link',
-    'lists',
-    'media',
-    'preview',
-    'searchreplace',
-    'table',
-    'visualblocks',
-    'wordcount',
-  ],
-  toolbar:
-    props.tinymceOptions?.toolbar ??
-    'undo redo | bold italic strikethrough | blocks fontfamily fontsize | alignleft aligncenter alignright alignjustify | bullist numlist blockquote | forecolor backcolor | link image insertvideo embediframe table cmstablestyles cmstemplates | code preview fullscreen a11ycheck',
+  plugins: mediaInsertionEnabled
+    ? (props.tinymceOptions?.plugins ?? defaultPlugins)
+    : withoutMediaInsertionPlugins(props.tinymceOptions?.plugins ?? defaultPlugins),
+  toolbar: withoutToolbarItems(
+    mediaInsertionEnabled
+      ? (props.tinymceOptions?.toolbar ?? defaultToolbar)
+      : withoutMediaInsertionToolbar(props.tinymceOptions?.toolbar ?? defaultToolbar),
+    disabledOptionalToolbarItems,
+  ),
   toolbar_mode: props.tinymceOptions?.toolbar_mode ?? 'wrap',
   advlist_bullet_styles: 'default,circle,square',
   advlist_number_styles: 'default,lower-alpha,lower-greek,lower-roman,upper-alpha,upper-roman',
@@ -1257,7 +1336,10 @@ const editorConfig = computed<RawEditorOptions>(() => ({
   // table_row_advtab: false,
   // table_appearance_options: false,
   // table_grid: false,
-  table_toolbar: 'tableprops tablecellprops cmstablestyles tablecaption | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tabledelete',
+  table_toolbar: withoutToolbarTokenItems(
+    props.tinymceOptions?.table_toolbar ?? defaultTableToolbar,
+    disabledOptionalToolbarItems,
+  ),
   table_default_header_rows: 1,
   table_header_type: 'sectionCells',
   ...(isStrictEditorMode
@@ -1283,7 +1365,10 @@ const editorConfig = computed<RawEditorOptions>(() => ({
             { selector: 'table', classes: 'cms-table-align-center' },
             { selector: 'tr', classes: 'cms-row-align-center' },
             { selector: 'td,th', classes: 'cms-cell-align-center' },
-            { selector: 'p,h1,h2,h3,h4,h5,h6,div,ul,ol,li,img,figure', classes: 'cms-align-center' },
+            {
+              selector: 'p,h1,h2,h3,h4,h5,h6,div,ul,ol,li,img,figure',
+              classes: 'cms-align-center',
+            },
           ],
           alignright: [
             { selector: 'table', classes: 'cms-table-align-right' },
@@ -1306,7 +1391,11 @@ const editorConfig = computed<RawEditorOptions>(() => ({
             remove_similar: true,
             clear_child_styles: true,
             exact: true,
-            onformat: (element: Element, _format: unknown, vars?: Record<string, string | null>) => {
+            onformat: (
+              element: Element,
+              _format: unknown,
+              vars?: Record<string, string | null>,
+            ) => {
               applyEditorColorClass(
                 element,
                 vars?.value,
@@ -1323,7 +1412,11 @@ const editorConfig = computed<RawEditorOptions>(() => ({
             remove_similar: true,
             clear_child_styles: true,
             exact: true,
-            onformat: (element: Element, _format: unknown, vars?: Record<string, string | null>) => {
+            onformat: (
+              element: Element,
+              _format: unknown,
+              vars?: Record<string, string | null>,
+            ) => {
               applyEditorColorClass(
                 element,
                 vars?.value,
@@ -1357,8 +1450,16 @@ const editorConfig = computed<RawEditorOptions>(() => ({
         custom_colors: false,
         color_picker_callback: null,
       }
-    : {}),
-  contextmenu: 'cmstablestyles cmstemplates cmsmedia cmslink image table',
+    : {
+        font_size_formats: relativeEditorFontSizeFormats,
+        font_size_input_default_unit: 'rem',
+      }),
+  contextmenu: withoutContextMenuItems(
+    mediaInsertionEnabled
+      ? (props.tinymceOptions?.contextmenu ?? defaultContextMenu)
+      : withoutMediaInsertionContextMenu(props.tinymceOptions?.contextmenu ?? defaultContextMenu),
+    disabledOptionalContextMenuItems,
+  ),
   skin: false,
   content_css: [
     resolveAssetUrl('tinymce/skins/ui/oxide/content.css'),
@@ -1366,49 +1467,54 @@ const editorConfig = computed<RawEditorOptions>(() => ({
     resolveAssetUrl('cms-content/templates.css'),
     resolveAssetUrl('cms-content/formatting.css'),
   ],
+  content_security_policy: editorContentSecurityPolicy,
   // object_resizing: 'table'
-  object_resizing: 'img,figure.image,div,video,iframe,span.mce-preview-object',
+  object_resizing: mediaInsertionEnabled
+    ? 'img,figure.image,div,video,iframe,span.mce-preview-object'
+    : 'table',
   resize_img_proportional: true,
   draggable_modal: true,
   promotion: false,
   branding: false,
-  automatic_uploads: true,
+  automatic_uploads: mediaInsertionEnabled,
   images_file_types: 'jpg,jpeg,png,gif,webp',
-  images_upload_handler: async (blobInfo, progress) => {
-    try {
-      const blob = blobInfo.blob()
-      const file = new File([blob], blobInfo.filename(), { type: blob.type })
-      const result = await uploadFile(
-        uploadAdapter,
-        file,
-        {
-          kind: 'image',
-          source: 'editor',
-          acceptedMimeTypes: imageUploadPolicy.acceptedMimeTypes,
-          maxFileSize: imageUploadPolicy.maxFileSize,
-          locale: locale.value as AppLocale,
+  ...(mediaInsertionEnabled
+    ? {
+        images_upload_handler: async (blobInfo, progress) => {
+          try {
+            const blob = blobInfo.blob()
+            const file = new File([blob], blobInfo.filename(), { type: blob.type })
+            const result = await uploadFile(
+              uploadAdapter,
+              file,
+              {
+                kind: 'image',
+                source: 'editor',
+                acceptedMimeTypes: imageUploadPolicy.acceptedMimeTypes,
+                maxFileSize: imageUploadPolicy.maxFileSize,
+                locale: locale.value as AppLocale,
+              },
+              progress,
+            )
+            rememberUploadedMedia(result)
+            return result.src
+          } catch (error) {
+            if (error instanceof UploadValidationError) {
+              if (error.code === 'invalidType') {
+                throw new Error(mediaToolLabels.value.uploadInvalidType, { cause: error })
+              }
+              if (error.code === 'tooLarge') {
+                throw new Error(mediaToolLabels.value.uploadTooLarge, { cause: error })
+              }
+              if (error.code === 'missingAdapter') {
+                throw new Error(mediaToolLabels.value.uploadMissingAdapter, { cause: error })
+              }
+            }
+            throw new Error(mediaToolLabels.value.uploadFailed, { cause: error })
+          }
         },
-        progress,
-      )
-      return result.src
-    } catch (error) {
-      if (error instanceof UploadValidationError) {
-        if (error.code === 'invalidType') {
-          throw new Error(mediaToolLabels.value.uploadInvalidType)
-        }
-
-        if (error.code === 'tooLarge') {
-          throw new Error(mediaToolLabels.value.uploadTooLarge)
-        }
-
-        if (error.code === 'missingAdapter') {
-          throw new Error(mediaToolLabels.value.uploadMissingAdapter)
-        }
       }
-
-      throw new Error(mediaToolLabels.value.uploadFailed)
-    }
-  },
+    : {}),
   sandbox_iframes: true,
   sandbox_iframes_exclusions: iframeSandboxExclusions,
   iframe_template_callback: createIframeTemplate,
@@ -1452,25 +1558,35 @@ const editorConfig = computed<RawEditorOptions>(() => ({
   setup: (editor: TinyMCEEditor) => {
     editorInstance.value = editor
     installEditorAccessibilityFixes(editor)
+    installToolbarTooltipDismiss(editor)
     if (isStrictEditorMode) {
       installTableDialogFieldGuard(editor)
     }
-    registerMediaTools(editor, mediaToolLabels.value, {
-      uploadAdapter,
-      locale: locale.value as AppLocale,
-      allowedIframeDomains: props.allowedIframeDomains,
-    })
-    registerCmsTemplates(editor, cmsTemplateLabels.value)
-    registerCmsTableStyles(editor, cmsTableStyleLabels.value)
+    if (mediaInsertionEnabled) {
+      registerMediaTools(editor, mediaToolLabels.value, {
+        uploadAdapter,
+        locale: locale.value as AppLocale,
+        allowedIframeDomains: props.allowedIframeDomains,
+        onUploadComplete: rememberUploadedMedia,
+      })
+    }
+    if (areCmsTemplatesEnabled) {
+      registerCmsTemplates(editor, cmsTemplateLabels.value)
+    }
+    if (areCmsTableStylesEnabled) {
+      registerCmsTableStyles(editor, cmsTableStyleLabels.value)
+    }
     registerAccessibilityCheck(editor, mediaToolLabels.value, {
-      profile: accessibilityProfile,
+      profile: activeAccessibilityProfile,
     })
     const prepareMediaObjects = () => {
-      editor.dom.select<HTMLElement>('span.mce-preview-object').forEach((element) => {
-        element.draggable = true
-        element.setAttribute('data-mce-resize', 'true')
-        element.setAttribute('tabindex', '0')
-      })
+      if (mediaInsertionEnabled) {
+        editor.dom.select<HTMLElement>('span.mce-preview-object').forEach((element) => {
+          element.draggable = true
+          element.setAttribute('data-mce-resize', 'true')
+          element.setAttribute('tabindex', '0')
+        })
+      }
       editor.dom
         .select<HTMLIFrameElement>('iframe')
         .forEach((iframe) => normalizeTrustedIframeElement(iframe, props.allowedIframeDomains))
@@ -1494,11 +1610,14 @@ const editorConfig = computed<RawEditorOptions>(() => ({
         nodes.forEach((node) => normalizeMediaDimensionNode(node))
       })
       if (isStrictEditorMode) {
-        editor.serializer.addNodeFilter('span,a,p,h1,h2,h3,h4,h5,h6,table,tr,td,th,div,ul,ol,li', (nodes) => {
-          nodes.forEach((node) => {
-            normalizeEditorColorNode(node)
-          })
-        })
+        editor.serializer.addNodeFilter(
+          'span,a,p,h1,h2,h3,h4,h5,h6,table,tr,td,th,div,ul,ol,li',
+          (nodes) => {
+            nodes.forEach((node) => {
+              normalizeEditorColorNode(node)
+            })
+          },
+        )
       }
     })
     editor.on('GetContent', (event) => {
@@ -1611,7 +1730,11 @@ const prepareBasicWorkspace = () => {
 }
 
 const changeWorkspaceMode = (mode: 'basic' | 'advanced') => {
-  if (mode === workspaceMode.value || isStrictEditorMode) {
+  if (
+    mode === workspaceMode.value ||
+    isStrictEditorMode ||
+    (mode === 'advanced' && !isAdvancedWorkspaceEnabled)
+  ) {
     return
   }
 
@@ -1627,11 +1750,12 @@ const changeWorkspaceMode = (mode: 'basic' | 'advanced') => {
     const editedContent = extractLegacyStyles(editor.getContent())
     const enterAdvancedWorkspace = (shouldApply: boolean) => {
       if (shouldApply) {
-        content.value = {
-          ...content.value,
-          html: editedContent.html,
-          css: mergeCss(content.value.css, basicLegacyCss.value, editedContent.css),
-        }
+        content.value = applyBasicHtmlChange(
+          content.value,
+          editedContent.html,
+          basicLegacyCss.value,
+          editedContent.css,
+        )
       } else {
         content.value = cloneContent(basicOriginalContent.value)
       }
@@ -1640,7 +1764,10 @@ const changeWorkspaceMode = (mode: 'basic' | 'advanced') => {
     }
 
     if (basicHasRoundTripRisk.value) {
-      editor.windowManager.confirm(t('app.advanced.applyBasicChangesConfirm'), enterAdvancedWorkspace)
+      editor.windowManager.confirm(
+        t('app.advanced.applyBasicChangesConfirm'),
+        enterAdvancedWorkspace,
+      )
     } else {
       enterAdvancedWorkspace(true)
     }
@@ -1661,13 +1788,11 @@ const toggleAdvancedCssInBasic = () => {
 }
 
 const updateBasicHtml = (value: string) => {
-  basicHtml.value = value
+  const annotatedValue = applyUploadedMediaMetadata(value, uploadedMediaBySource)
+  basicHtml.value = annotatedValue
   if (editorInstance.value?.isDirty()) {
     basicHasUserChanges.value = true
-    content.value = {
-      ...content.value,
-      html: value,
-    }
+    content.value = applyBasicHtmlChange(content.value, annotatedValue)
   }
 }
 
@@ -1682,6 +1807,7 @@ const handleAdvancedDirty = () => {
 }
 
 const setContent = (value: EditorContent) => {
+  uploadedMediaBySource.clear()
   content.value = cloneContent(value)
   cleanContent.value = cloneContent(value)
   basicOriginalContent.value = cloneContent(value)
@@ -1701,7 +1827,7 @@ const getContent = (): EditorContent => {
   if (workspaceMode.value === 'basic' && editorInstance.value?.isDirty()) {
     return {
       ...content.value,
-      html: editorInstance.value.getContent(),
+      html: applyUploadedMediaMetadata(editorInstance.value.getContent(), uploadedMediaBySource),
     }
   }
 
@@ -1719,8 +1845,8 @@ const focus = () => {
 const isDirty = () =>
   Boolean(
     editorInstance.value?.isDirty() ||
-      basicHasUserChanges.value ||
-      JSON.stringify(getContent()) !== JSON.stringify(cleanContent.value),
+    basicHasUserChanges.value ||
+    JSON.stringify(getContent()) !== JSON.stringify(cleanContent.value),
   )
 
 const markClean = () => {
@@ -1730,9 +1856,17 @@ const markClean = () => {
   emitDirtyState(false, true)
 }
 
+const getCapabilityReport = () => analyzeContentCapabilities(getContent())
+const getMediaReferenceManifest = () => extractMediaReferenceManifest(getContent())
+const getPublicationReport = (policy: PublicationPolicy) =>
+  evaluateContentForPublication(getContent(), policy)
+
 defineExpose({
   focus,
+  getCapabilityReport,
   getContent,
+  getMediaReferenceManifest,
+  getPublicationReport,
   isDirty,
   markClean,
   setContent,
@@ -1749,11 +1883,7 @@ watch(
   { deep: true },
 )
 
-watch(
-  content,
-  (value) => emit('update:modelValue', cloneContent(value)),
-  { deep: true },
-)
+watch(content, (value) => emit('update:modelValue', cloneContent(value)), { deep: true })
 
 watch(
   () => props.locale,
@@ -1777,7 +1907,7 @@ watch(
   >
     <section class="editor-card" :aria-label="t('app.editorLabel')">
       <nav
-        v-if="!isStrictEditorMode"
+        v-if="isAdvancedWorkspaceEnabled"
         class="workspace-mode-switcher"
         :aria-label="t('app.editorModeLabel')"
       >
@@ -1804,7 +1934,7 @@ watch(
       </nav>
 
       <div
-        v-if="!isStrictEditorMode && workspaceMode === 'basic' && hasAdvancedContent"
+        v-if="isAdvancedWorkspaceEnabled && workspaceMode === 'basic' && hasAdvancedContent"
         class="advanced-content-tip"
         role="status"
       >
@@ -1820,9 +1950,7 @@ watch(
             @click="toggleAdvancedCssInBasic"
           >
             {{
-              isAdvancedCssEnabledInBasic
-                ? t('app.advanced.pauseCss')
-                : t('app.advanced.enableCss')
+              isAdvancedCssEnabledInBasic ? t('app.advanced.pauseCss') : t('app.advanced.enableCss')
             }}
           </button>
         </div>
@@ -1846,11 +1974,7 @@ watch(
         >
           {{ t('app.editorLoadFailed') }} {{ tinyMceLoadError }}
         </p>
-        <p
-          v-else-if="workspaceMode === 'basic'"
-          class="editor-load-state"
-          role="status"
-        >
+        <p v-else-if="workspaceMode === 'basic'" class="editor-load-state" role="status">
           {{ t('app.editorLoading') }}
         </p>
         <AdvancedContentEditor
@@ -1860,6 +1984,9 @@ watch(
           :initial-tab="advancedInitialTab"
           :locale="locale as AppLocale"
           :labels="advancedEditorLabels"
+          :accessibility-profile="activeAccessibilityProfile"
+          :enabled-tabs="advancedCodeTabs"
+          :javascript-enabled="resolvedEditorPolicy.customJavaScriptEnabled"
           :disabled="disabled"
           :readonly="readonly"
           @update:model-value="updateAdvancedContent"

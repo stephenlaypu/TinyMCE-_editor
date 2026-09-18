@@ -96,7 +96,8 @@ export const cellBorderColorClassByValue = createElementColorClassMap(
 )
 
 export const editorBorderStyleOptions = formattingTokens.borderStyles as BorderStyleToken[]
-export const cellVerticalAlignOptions = formattingTokens.verticalAlignments as VerticalAlignmentToken[]
+export const cellVerticalAlignOptions =
+  formattingTokens.verticalAlignments as VerticalAlignmentToken[]
 export const editorListStyleOptions = formattingTokens.listStyles as ListStyleToken[]
 
 const createStyleClassMap = (prefix: string, options: BorderStyleToken[]) =>
@@ -141,9 +142,7 @@ export const cellBorderStyleClasses = [...cellBorderStyleClassByValue.values()]
 export const cellVerticalAlignClasses = [...cellVerticalAlignClassByValue.values()]
 export const editorListStyleClasses = [...editorListStyleClassByValue.values()]
 
-export const preserveExistingTableClassList = [
-  { title: '保留既有樣式', value: 'mce-no-match' },
-]
+export const preserveExistingTableClassList = [{ title: '保留既有樣式', value: 'mce-no-match' }]
 
 export const defaultEditorFontValue = 'cms-font-default'
 export const editorFontFamilies = formattingTokens.fontFamilies as FontFamilyToken[]
@@ -158,6 +157,10 @@ export const defaultEditorFontSizeValue = 'cms-font-size-default'
 export const editorFontSizes = formattingTokens.fontSizes as FontSizeToken[]
 export const editorFontSizeFormats = editorFontSizes
   .map(({ title, className }) => `${title}=${className}`)
+  .join(' ')
+export const relativeEditorFontSizeFormats = editorFontSizes
+  .filter((token): token is FontSizeToken & { fontSize: string } => Boolean(token.fontSize))
+  .map(({ title, fontSize }) => `${title}=${fontSize}`)
   .join(' ')
 export const editorFontSizeClasses = editorFontSizes
   .map(({ className }) => className)

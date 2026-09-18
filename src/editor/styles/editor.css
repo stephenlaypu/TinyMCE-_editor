@@ -130,7 +130,7 @@ html.cms-advanced-fullscreen-open body {
   overflow: hidden;
 }
 
-.cms-content-editor .tox .tox-tbtn[data-mce-name="a11ycheck"] {
+.cms-content-editor .tox .tox-tbtn[data-mce-name='a11ycheck'] {
   width: auto;
   min-width: 4.75rem;
   border: 1px solid rgba(33, 75, 58, 0.2);
@@ -142,17 +142,23 @@ html.cms-advanced-fullscreen-open body {
   white-space: nowrap;
 }
 
-.cms-content-editor .tox .tox-tbtn[data-mce-name="a11ycheck"]:hover {
+.cms-content-editor .tox .tox-tbtn[data-mce-name='a11ycheck']:hover {
   background: #e1ece5;
 }
 
-.cms-content-editor .tox .tox-tbtn[data-mce-name="a11ycheck"]:focus-visible {
+.cms-content-editor .tox .tox-tbtn[data-mce-name='a11ycheck']:focus-visible {
   outline: 2px solid #d89525;
   outline-offset: 2px;
 }
 
 .tox-notifications-container,
 .tox-notification {
+  z-index: 14000 !important;
+}
+
+/* TinyMCE appends menus and dialogs to document.body. Keep that portal above
+   host overlays such as Element Plus drawers and dialogs. */
+.tox-tinymce-aux {
   z-index: 14000 !important;
 }
 

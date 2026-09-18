@@ -30,9 +30,18 @@ const compositeColor = (foreground: RgbaColor, background: RgbaColor): RgbaColor
   }
 
   return {
-    red: (foreground.red * foreground.alpha + background.red * background.alpha * (1 - foreground.alpha)) / alpha,
-    green: (foreground.green * foreground.alpha + background.green * background.alpha * (1 - foreground.alpha)) / alpha,
-    blue: (foreground.blue * foreground.alpha + background.blue * background.alpha * (1 - foreground.alpha)) / alpha,
+    red:
+      (foreground.red * foreground.alpha +
+        background.red * background.alpha * (1 - foreground.alpha)) /
+      alpha,
+    green:
+      (foreground.green * foreground.alpha +
+        background.green * background.alpha * (1 - foreground.alpha)) /
+      alpha,
+    blue:
+      (foreground.blue * foreground.alpha +
+        background.blue * background.alpha * (1 - foreground.alpha)) /
+      alpha,
     alpha,
   }
 }

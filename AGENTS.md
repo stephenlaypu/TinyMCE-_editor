@@ -42,6 +42,7 @@
 - 型別檢查：`pnpm typecheck`
 - 測試：`pnpm test`
 - 建置：`pnpm build`
+- Editor 測試集中在 `tests/editor`，依 `src/editor` 的子目錄結構排列；`src/editor` 只保留可搬移 runtime 原始碼。
 - Vite dev server 固定使用 `5180` port。
 - Vite preview 固定使用 `4180` port。
 
@@ -96,6 +97,11 @@
 - trusted iframe 會自動補 title fallback。
 - trusted iframe 會保留 sandbox，並移除 `allow-same-origin` token。
 - iframe allow attribute 會移除目前會造成 console warning 的 `web-share` feature。
+- Upload result 可成對回傳 `fileGuid` 與 `fileState`，Editor 會將新上傳媒體標記為 RichText 檔案庫引用。
+- `extractMediaReferenceManifest()` 與 `diffMediaReferenceManifests()` 提供媒體引用擷取、Temp → Active 與解除引用差異；後端仍必須重新驗證。
+- `resolveManagedMediaReferences()` 可以建立使用永久公開 URL 的內容副本；缺少解析或非公開 URL 時 fail closed。
+- `prepareResolvedPageContentForPublication()` 以固定順序組合整頁媒體解析、發布 policy 與 namespace／render mode 準備。
+- 發布預檢會阻擋 `blob:`、temporary、admin-only、invalid 與缺少生命週期的 managed media URL。
 
 ## 文件維護
 

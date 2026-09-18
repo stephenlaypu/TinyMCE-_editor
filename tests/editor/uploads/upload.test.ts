@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { UploadAdapter, UploadContext } from './types'
-import { uploadFile } from './upload'
+import type { UploadAdapter, UploadContext } from '../../../src/editor/uploads/types'
+import { uploadFile } from '../../../src/editor/uploads/upload'
 
 const imageContext: UploadContext = {
   kind: 'image',
@@ -44,5 +44,40 @@ describe('uploadFile', () => {
       src: 'https://cdn.example.com/sample.png',
     })
     expect(adapter.upload).toHaveBeenCalledOnce()
+  })
+
+  it('accepts a complete file-library reference', async () => {
+    const adapter: UploadAdapter = {
+      upload: vi.fn().mockResolvedValue({
+        src: 'https://cdn.example.com/sample.png',
+        fileGuid: ' image-guid ',
+        fileState: 'active',
+      }),
+    }
+
+    await expect(uploadFile(adapter, createFile(), imageContext)).resolves.toMatchObject({
+      src: 'https://cdn.example.com/sample.png',
+      fileGuid: 'image-guid',
+      fileState: 'active',
+    })
+  })
+
+  it('rejects incomplete or unsafe upload responses', async () => {
+    const incomplete: UploadAdapter = {
+      upload: vi.fn().mockResolvedValue({
+        src: '/media/sample.png',
+        fileGuid: 'image-guid',
+      }),
+    }
+    const unsafe: UploadAdapter = {
+      upload: vi.fn().mockResolvedValue({ src: 'javascript:alert(1)' }),
+    }
+
+    await expect(uploadFile(incomplete, createFile(), imageContext)).rejects.toMatchObject({
+      code: 'invalidResponse',
+    })
+    await expect(uploadFile(unsafe, createFile(), imageContext)).rejects.toMatchObject({
+      code: 'invalidResponse',
+    })
   })
 })

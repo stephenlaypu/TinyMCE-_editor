@@ -1,8 +1,4 @@
-export type CmsTableSizingField =
-  | 'tableWidth'
-  | 'cellWidth'
-  | 'cellPadding'
-  | 'borderWidth'
+export type CmsTableSizingField = 'tableWidth' | 'cellWidth' | 'cellPadding' | 'borderWidth'
 
 export type CmsTableSizingValues = Partial<Record<CmsTableSizingField, string>>
 
@@ -11,7 +7,10 @@ export const cmsTableWidthClassByValue = new Map(
 )
 
 export const cmsCellWidthClassByValue = new Map(
-  [20, 25, 33, 40, 50, 60, 66, 75, 80, 100].map((value) => [`${value}%`, `cms-cell-width-${value}`]),
+  [20, 25, 33, 40, 50, 60, 66, 75, 80, 100].map((value) => [
+    `${value}%`,
+    `cms-cell-width-${value}`,
+  ]),
 )
 
 export const cmsTablePaddingClassByValue = new Map(
@@ -68,11 +67,7 @@ const getClassValue = (element: Element, classByValue: Map<string, string>) => {
   return null
 }
 
-const setManagedClass = (
-  element: Element,
-  classNames: string[],
-  className: string | null,
-) => {
+const setManagedClass = (element: Element, classNames: string[], className: string | null) => {
   element.classList.remove(...classNames)
 
   if (className) {
@@ -207,9 +202,9 @@ const getColumnClassValueForCell = (cell: HTMLTableCellElement) => {
     return null
   }
 
-  const values = columns.slice(range.start, range.end).map((column) =>
-    getClassValue(column, cmsCellWidthClassByValue),
-  )
+  const values = columns
+    .slice(range.start, range.end)
+    .map((column) => getClassValue(column, cmsCellWidthClassByValue))
   const firstValue = values[0] ?? null
 
   return firstValue && values.every((value) => value === firstValue) ? firstValue : null
@@ -437,7 +432,11 @@ export const normalizeCmsTableSizing = (table: HTMLTableElement) => {
     )
 
     if (columnWidth) {
-      setManagedClass(column, cmsCellWidthClasses, cmsCellWidthClassByValue.get(columnWidth) ?? null)
+      setManagedClass(
+        column,
+        cmsCellWidthClasses,
+        cmsCellWidthClassByValue.get(columnWidth) ?? null,
+      )
       removeStyleProperty(column, 'width')
       column.removeAttribute('width')
       didChange = true

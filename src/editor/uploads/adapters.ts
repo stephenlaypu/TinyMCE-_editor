@@ -1,15 +1,6 @@
 import type { UploadAdapter, UploadResult } from './types'
 import { UploadValidationError } from './types'
 
-const isSafeUploadUrl = (value: string): boolean => {
-  try {
-    const url = new URL(value, window.location.href)
-    return url.protocol === 'http:' || url.protocol === 'https:' || url.protocol === 'blob:'
-  } catch {
-    return false
-  }
-}
-
 const parseUploadResponse = (value: unknown): UploadResult => {
   if (
     typeof value !== 'object' ||
@@ -18,10 +9,6 @@ const parseUploadResponse = (value: unknown): UploadResult => {
     typeof value.src !== 'string' ||
     !value.src.trim()
   ) {
-    throw new UploadValidationError('invalidResponse')
-  }
-
-  if (!isSafeUploadUrl(value.src)) {
     throw new UploadValidationError('invalidResponse')
   }
 

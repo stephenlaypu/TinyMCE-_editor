@@ -36,10 +36,7 @@ interface AnchorListDialogSpec {
       onInit: (element: HTMLElement) => void
     }>
   }
-  buttons: Array<
-    | { type: 'cancel'; text: string }
-    | { type: 'submit'; text: string; primary: true }
-  >
+  buttons: Array<{ type: 'cancel'; text: string } | { type: 'submit'; text: string; primary: true }>
   onSubmit: (api: AnchorListDialogApi) => void
 }
 
@@ -91,13 +88,15 @@ const readAnchorListItems = (anchorList: HTMLUListElement | null): AnchorListIte
     return defaultAnchorListItems
   }
 
-  const items = Array.from(anchorList.querySelectorAll<HTMLElement>(':scope > li')).map((listItem) => {
-    const link = listItem.querySelector<HTMLAnchorElement>(':scope > a')
-    const text = (link?.textContent ?? listItem.textContent ?? '').trim()
-    const href = link?.getAttribute('href')?.trim() || `#${text || 'section'}`
+  const items = Array.from(anchorList.querySelectorAll<HTMLElement>(':scope > li')).map(
+    (listItem) => {
+      const link = listItem.querySelector<HTMLAnchorElement>(':scope > a')
+      const text = (link?.textContent ?? listItem.textContent ?? '').trim()
+      const href = link?.getAttribute('href')?.trim() || `#${text || 'section'}`
 
-    return { text, href }
-  })
+      return { text, href }
+    },
+  )
 
   return items.length > 0 ? items : defaultAnchorListItems
 }
@@ -300,7 +299,9 @@ const readItemsFromRoot = (root: HTMLElement): AnchorListItem[] | null => {
 
   for (const row of rows) {
     const text = row.querySelector<HTMLInputElement>('[data-anchor-text]')?.value.trim() ?? ''
-    const href = normalizeHref(row.querySelector<HTMLInputElement>('[data-anchor-href]')?.value ?? '')
+    const href = normalizeHref(
+      row.querySelector<HTMLInputElement>('[data-anchor-href]')?.value ?? '',
+    )
 
     if (!text && !href) {
       continue
@@ -405,7 +406,9 @@ const createAnchorListDialog = (
             rootElement = element
             renderDialogRows(element, labels, currentItems)
             element.addEventListener('click', (event) => {
-              const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-anchor-action]')
+              const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+                '[data-anchor-action]',
+              )
 
               if (!button || button.disabled || !syncItems()) {
                 return
@@ -426,11 +429,21 @@ const createAnchorListDialog = (
               }
 
               if (action === 'moveUp' && Number.isInteger(index) && index > 0) {
-                ;[currentItems[index - 1], currentItems[index]] = [currentItems[index], currentItems[index - 1]]
+                ;[currentItems[index - 1], currentItems[index]] = [
+                  currentItems[index],
+                  currentItems[index - 1],
+                ]
               }
 
-              if (action === 'moveDown' && Number.isInteger(index) && index < currentItems.length - 1) {
-                ;[currentItems[index], currentItems[index + 1]] = [currentItems[index + 1], currentItems[index]]
+              if (
+                action === 'moveDown' &&
+                Number.isInteger(index) &&
+                index < currentItems.length - 1
+              ) {
+                ;[currentItems[index], currentItems[index + 1]] = [
+                  currentItems[index + 1],
+                  currentItems[index],
+                ]
               }
 
               renderDialogRows(element, labels, currentItems)
@@ -473,7 +486,8 @@ const openAnchorListDialog = (
 }
 
 export const registerCmsTemplates = (editor: Editor, labels: CmsTemplateLabels) => {
-  const openSelectedAnchorListDialog = () => openAnchorListDialog(editor, labels, findAnchorList(editor, null))
+  const openSelectedAnchorListDialog = () =>
+    openAnchorListDialog(editor, labels, findAnchorList(editor, null))
 
   editor.addCommand('cmsAnchorListTemplate', openSelectedAnchorListDialog)
 

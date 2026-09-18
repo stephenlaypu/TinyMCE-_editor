@@ -1,13 +1,13 @@
 import { getElementTextContrastRatio } from './contrast'
+import { findAbsoluteFontSizeUnit } from './fontSizeUnits'
+import {
+  getAccessibilityRuleDefinition,
+  type AccessibilityRuleId,
+  type AccessibilityStandardReference,
+} from './twAa110Catalog'
 
 export type AccessibilityProfile = 'content-quality' | 'tw-aa-110'
 export type AccessibilityIssueKind = 'required' | 'review' | 'suggestion'
-
-export interface AccessibilityStandardReference {
-  successCriteria: string[]
-  detectionCodes?: string[]
-  auditCodes?: string[]
-}
 
 export interface AccessibilityTarget {
   selector: string
@@ -16,7 +16,7 @@ export interface AccessibilityTarget {
 
 export interface AccessibilityIssue {
   id: string
-  rule: string
+  rule: AccessibilityRuleId
   kind: AccessibilityIssueKind
   message: string
   target: AccessibilityTarget
@@ -101,18 +101,18 @@ const getSnippet = (element: Element): string => {
     return text.length > 80 ? `${text.slice(0, 80)}...` : text
   }
 
-  const src = element.getAttribute('src') ?? element.getAttribute('href') ?? element.tagName.toLowerCase()
+  const src =
+    element.getAttribute('src') ?? element.getAttribute('href') ?? element.tagName.toLowerCase()
   return src.length > 80 ? `${src.slice(0, 80)}...` : src
 }
 
 const createIssue = (
   issues: AccessibilityIssue[],
-  rule: string,
+  rule: AccessibilityRuleId,
   kind: AccessibilityIssueKind,
   message: string,
   target: AccessibilityTarget,
   element: Element,
-  standard?: AccessibilityStandardReference,
 ) => {
   issues.push({
     id: `${rule}-${target.selector}-${target.index}`,
@@ -121,7 +121,7 @@ const createIssue = (
     message,
     target,
     snippet: getSnippet(element),
-    standard,
+    standard: getAccessibilityRuleDefinition(rule).standard,
   })
 }
 
@@ -145,6 +145,29 @@ const hasDirectText = (element: Element): boolean =>
     (node) => node.nodeType === Node.TEXT_NODE && Boolean(node.textContent?.trim()),
   )
 
+const checkFontSizeUnits = (root: ParentNode, issues: AccessibilityIssue[]) => {
+  forEachTarget(root, '[style]', (element, target) => {
+    const declarations = element.getAttribute('style') ?? ''
+    const fontSize = Array.from(
+      declarations.matchAll(/(?:^|;)\s*font-size\s*:\s*([^;]+)/gi),
+      (match) => match[1]?.trim() ?? '',
+    ).find((value) => findAbsoluteFontSizeUnit(value))
+
+    if (!fontSize) {
+      return
+    }
+
+    createIssue(
+      issues,
+      'font-size-absolute-unit',
+      'required',
+      `字級使用固定單位「${fontSize}」，請改用 rem、em、百分比、具名字級或受管理的 CMS 字級 class。`,
+      target,
+      element,
+    )
+  })
+}
+
 const checkTextContrast = (root: ParentNode, issues: AccessibilityIssue[]) => {
   forEachTarget(root, '*', (element, target) => {
     if (!hasDirectText(element) || element.closest('[aria-hidden="true"]')) {
@@ -154,7 +177,12 @@ const checkTextContrast = (root: ParentNode, issues: AccessibilityIssue[]) => {
     const view = element.ownerDocument.defaultView
     const style = view?.getComputedStyle(element)
 
-    if (!style || style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) {
+    if (
+      !style ||
+      style.display === 'none' ||
+      style.visibility === 'hidden' ||
+      Number(style.opacity) === 0
+    ) {
       return
     }
 
@@ -173,10 +201,6 @@ const checkTextContrast = (root: ParentNode, issues: AccessibilityIssue[]) => {
         `文字與背景對比為 ${ratio.toFixed(2)}:1，需至少達到 ${minimumRatio}:1。`,
         target,
         element,
-        {
-          successCriteria: ['1.4.3'],
-          auditCodes: ['GN2140300E', 'GN2140301E', 'GN2140302E', 'GN2140303E'],
-        },
       )
     }
   })
@@ -258,11 +282,7 @@ const checkHeadingStructure = (root: ParentNode, issues: AccessibilityIssue[]) =
     const level = Number(heading.tagName.slice(1))
 
     if (!getText(heading)) {
-      createIssue(issues, 'heading-empty', 'required', '標題不可為空白。', target, heading, {
-        successCriteria: ['1.3.1'],
-        detectionCodes: ['HM1130100C'],
-        auditCodes: ['HM1130104E'],
-      })
+      createIssue(issues, 'heading-empty', 'required', '標題不可為空白。', target, heading)
       return
     }
 
@@ -274,11 +294,6 @@ const checkHeadingStructure = (root: ParentNode, issues: AccessibilityIssue[]) =
         `標題階層不可從 h${previousLevel} 直接跳到 h${level}。`,
         target,
         heading,
-        {
-          successCriteria: ['1.3.1'],
-          detectionCodes: ['HM1130100C'],
-          auditCodes: ['HM1130104E'],
-        },
       )
     }
 
@@ -298,9 +313,14 @@ const checkDuplicateIds = (root: ParentNode, issues: AccessibilityIssue[]) => {
     }
 
     if (seenIds.has(id)) {
-      createIssue(issues, 'duplicate-id', 'required', `id "${id}" 重複，頁面中 id 必須唯一。`, target, element, {
-        successCriteria: ['4.1.1'],
-      })
+      createIssue(
+        issues,
+        'duplicate-id',
+        'required',
+        `id "${id}" 重複，頁面中 id 必須唯一。`,
+        target,
+        element,
+      )
       return
     }
 
@@ -314,11 +334,14 @@ const checkFormControlNames = (root: ParentNode, issues: AccessibilityIssue[]) =
 
   forEachTarget(root, selector, (control, target) => {
     if (!hasAssociatedLabel(root, control)) {
-      createIssue(issues, 'form-label', 'required', '表單欄位缺少可辨識的 label 或 ARIA 名稱。', target, control, {
-        successCriteria: ['1.3.1', '4.1.2'],
-        detectionCodes: ['HM1410200C'],
-        auditCodes: ['GN1410200E'],
-      })
+      createIssue(
+        issues,
+        'form-label',
+        'required',
+        '表單欄位缺少可辨識的 label 或 ARIA 名稱。',
+        target,
+        control,
+      )
     }
   })
 }
@@ -326,13 +349,177 @@ const checkFormControlNames = (root: ParentNode, issues: AccessibilityIssue[]) =
 const checkButtonNames = (root: ParentNode, issues: AccessibilityIssue[]) => {
   forEachTarget(root, 'button,[role="button"]', (button, target) => {
     if (!getAccessibleName(button)) {
-      createIssue(issues, 'button-name', 'required', '按鈕缺少可辨識名稱。', target, button, {
-        successCriteria: ['4.1.2'],
-        detectionCodes: ['HM1410200C'],
-        auditCodes: ['GN1410200E'],
-      })
+      createIssue(issues, 'button-name', 'required', '按鈕缺少可辨識名稱。', target, button)
     }
   })
+}
+
+const checkAriaReferences = (root: ParentNode, issues: AccessibilityIssue[]) => {
+  const attributes = [
+    'aria-activedescendant',
+    'aria-controls',
+    'aria-describedby',
+    'aria-details',
+    'aria-errormessage',
+    'aria-flowto',
+    'aria-labelledby',
+    'aria-owns',
+  ]
+  const selector = attributes.map((attribute) => `[${attribute}]`).join(',')
+  const existingIds = new Set(
+    Array.from(root.querySelectorAll('[id]'))
+      .map((element) => element.getAttribute('id')?.trim() ?? '')
+      .filter(Boolean),
+  )
+
+  forEachTarget(root, selector, (element, target) => {
+    attributes.forEach((attribute) => {
+      if (!element.hasAttribute(attribute)) {
+        return
+      }
+
+      const references = (element.getAttribute(attribute) ?? '').trim().split(/\s+/).filter(Boolean)
+      const missing = references.filter((id) => !existingIds.has(id))
+
+      if (references.length === 0 || missing.length > 0) {
+        createIssue(
+          issues,
+          'aria-reference',
+          'required',
+          references.length === 0
+            ? `${attribute} 不可為空白。`
+            : `${attribute} 參照了不存在的 id：${missing.join('、')}。`,
+          target,
+          element,
+        )
+      }
+    })
+  })
+}
+
+const checkFocusOrderHints = (root: ParentNode, issues: AccessibilityIssue[]) => {
+  forEachTarget(root, '[tabindex]', (element, target) => {
+    const tabindex = Number(element.getAttribute('tabindex'))
+
+    if (Number.isInteger(tabindex) && tabindex > 0) {
+      createIssue(
+        issues,
+        'positive-tabindex',
+        'review',
+        `tabindex="${tabindex}" 會改變自然焦點順序，請確認鍵盤操作順序。`,
+        target,
+        element,
+      )
+    }
+  })
+}
+
+const checkMediaPlayback = (root: ParentNode, issues: AccessibilityIssue[]) => {
+  forEachTarget(root, 'audio[autoplay],video[autoplay]', (media, target) => {
+    if (!media.hasAttribute('muted') && !media.hasAttribute('controls')) {
+      createIssue(
+        issues,
+        'media-autoplay',
+        'review',
+        '媒體會自動播放聲音且沒有 controls，請提供暫停、停止或音量控制。',
+        target,
+        media,
+      )
+    }
+  })
+
+  forEachTarget(root, 'blink,marquee', (element, target) => {
+    createIssue(
+      issues,
+      'moving-content',
+      'review',
+      '移動或閃爍內容可能無法暫停，也可能造成閃爍風險，請改用可控制的呈現方式。',
+      target,
+      element,
+    )
+  })
+}
+
+const checkLanguageTags = (root: ParentNode, issues: AccessibilityIssue[]) => {
+  forEachTarget(root, '[lang]', (element, target) => {
+    const language = element.getAttribute('lang')?.trim() ?? ''
+    let valid = Boolean(language)
+
+    if (valid) {
+      try {
+        Intl.getCanonicalLocales(language)
+      } catch {
+        valid = false
+      }
+    }
+
+    if (!valid) {
+      createIssue(
+        issues,
+        'language-tag',
+        'required',
+        `lang="${language}" 不是有效的語言標籤。`,
+        target,
+        element,
+      )
+    }
+  })
+}
+
+const checkListStructure = (root: ParentNode, issues: AccessibilityIssue[]) => {
+  forEachTarget(root, 'li', (item, target) => {
+    if (!item.parentElement?.matches('ul,ol,menu')) {
+      createIssue(
+        issues,
+        'list-structure',
+        'required',
+        '清單項目 li 必須直接放在 ul、ol 或 menu 內。',
+        target,
+        item,
+      )
+    }
+  })
+
+  forEachTarget(root, 'ul,ol,menu', (list, target) => {
+    const invalidChild = Array.from(list.children).find(
+      (child) => !child.matches('li,script,template'),
+    )
+
+    if (invalidChild) {
+      createIssue(
+        issues,
+        'list-structure',
+        'required',
+        '清單容器只能直接包含 li 清單項目。',
+        target,
+        list,
+      )
+    }
+  })
+}
+
+const suspiciousAltPattern = /^(image|img|photo|picture|圖片|影像|照片|圖示|icon|spacer)$/i
+const filenameAltPattern = /(?:^|[/\\])[^/\\]+\.(?:avif|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i
+
+const checkImageAltQuality = (root: ParentNode, issues: AccessibilityIssue[]) => {
+  forEachTarget(
+    root,
+    'img[alt]:not([alt=""]):not([data-mce-object]):not([data-mce-placeholder])',
+    (image, target) => {
+      const alt = image.getAttribute('alt')?.trim() ?? ''
+
+      if (suspiciousAltPattern.test(alt) || filenameAltPattern.test(alt)) {
+        createIssue(
+          issues,
+          'image-alt-quality',
+          'review',
+          '替代文字看起來是通用詞或檔名，請確認它有描述圖片傳達的資訊或功能。',
+          target,
+          image,
+        )
+      }
+    },
+  )
 }
 
 export const findAccessibilityTarget = (
@@ -353,15 +540,21 @@ export const checkAccessibility = (
   checkHeadingStructure(root, issues)
   checkFormControlNames(root, issues)
   checkButtonNames(root, issues)
+  checkListStructure(root, issues)
+  checkAriaReferences(root, issues)
   checkTextContrast(root, issues)
+
+  if (profile === 'tw-aa-110') {
+    checkFontSizeUnits(root, issues)
+    checkFocusOrderHints(root, issues)
+    checkMediaPlayback(root, issues)
+    checkLanguageTags(root, issues)
+    checkImageAltQuality(root, issues)
+  }
 
   forEachTarget(root, 'img:not([data-mce-object]):not([data-mce-placeholder])', (image, target) => {
     if (!image.hasAttribute('alt')) {
-      createIssue(issues, 'image-alt', 'required', '圖片缺少替代文字 alt。', target, image, {
-        successCriteria: ['1.1.1'],
-        detectionCodes: ['HM1110100C'],
-        auditCodes: ['HM1110100E', 'HM1110112E'],
-      })
+      createIssue(issues, 'image-alt', 'required', '圖片缺少替代文字 alt。', target, image)
       return
     }
 
@@ -373,11 +566,6 @@ export const checkAccessibility = (
         '此圖片使用空白 alt，請確認它確實不傳達資訊或功能。',
         target,
         image,
-        {
-          successCriteria: ['1.1.1'],
-          detectionCodes: ['HM1110106C'],
-          auditCodes: ['HM1110112E'],
-        },
       )
     }
   })
@@ -386,11 +574,7 @@ export const checkAccessibility = (
     const text = getAccessibleName(link).toLowerCase()
 
     if (!text) {
-      createIssue(issues, 'link-text', 'required', '連結缺少可辨識文字。', target, link, {
-        successCriteria: ['2.4.4'],
-        detectionCodes: ['HM1240401C'],
-        auditCodes: ['HM1240400E', 'GN1240401E'],
-      })
+      createIssue(issues, 'link-text', 'required', '連結缺少可辨識文字。', target, link)
       return
     }
 
@@ -402,31 +586,26 @@ export const checkAccessibility = (
         '連結文字不夠明確，建議描述目的地。',
         target,
         link,
-        {
-          successCriteria: ['2.4.4'],
-          auditCodes: ['HM1240400E', 'GN1240401E'],
-        },
       )
     }
   })
 
-  forEachTarget(root, 'span.mce-preview-object[data-mce-object="iframe"]', (previewObject, target) => {
-    if (!getIframeTitleFromPreview(previewObject)) {
-      createIssue(
-        issues,
-        'iframe-title',
-        'required',
-        'iframe 缺少 title，螢幕閱讀器無法辨識內容。',
-        target,
-        previewObject,
-        {
-          successCriteria: ['4.1.2'],
-          detectionCodes: ['HM1410201C'],
-          auditCodes: ['GN1410200E'],
-        },
-      )
-    }
-  })
+  forEachTarget(
+    root,
+    'span.mce-preview-object[data-mce-object="iframe"]',
+    (previewObject, target) => {
+      if (!getIframeTitleFromPreview(previewObject)) {
+        createIssue(
+          issues,
+          'iframe-title',
+          'required',
+          'iframe 缺少 title，螢幕閱讀器無法辨識內容。',
+          target,
+          previewObject,
+        )
+      }
+    },
+  )
 
   forEachTarget(root, 'iframe', (iframe, target) => {
     if (iframe.closest('span.mce-preview-object[data-mce-object="iframe"]')) {
@@ -434,11 +613,14 @@ export const checkAccessibility = (
     }
 
     if (!iframe.getAttribute('title')?.trim()) {
-      createIssue(issues, 'iframe-title', 'required', 'iframe 缺少 title，螢幕閱讀器無法辨識內容。', target, iframe, {
-        successCriteria: ['4.1.2'],
-        detectionCodes: ['HM1410201C'],
-        auditCodes: ['GN1410200E'],
-      })
+      createIssue(
+        issues,
+        'iframe-title',
+        'required',
+        'iframe 缺少 title，螢幕閱讀器無法辨識內容。',
+        target,
+        iframe,
+      )
     }
   })
 
@@ -451,18 +633,11 @@ export const checkAccessibility = (
         '表格缺少 caption，請確認是否需要表格標題或目的說明。',
         target,
         table,
-        {
-          successCriteria: ['1.3.1'],
-          auditCodes: ['HM1130108E', 'HM1130109E'],
-        },
       )
     }
 
     if (!table.querySelector('th')) {
-      createIssue(issues, 'table-header', 'required', '資料表格缺少 th 表頭。', target, table, {
-        successCriteria: ['1.3.1'],
-        auditCodes: ['HM1130107E'],
-      })
+      createIssue(issues, 'table-header', 'required', '資料表格缺少 th 表頭。', target, table)
     }
 
     table.querySelectorAll('th').forEach((header) => {
@@ -474,10 +649,6 @@ export const checkAccessibility = (
           '表格 th 表頭不可為空白。',
           getTarget(root, 'th', header),
           header,
-          {
-            successCriteria: ['1.3.1'],
-            auditCodes: ['HM1130107E'],
-          },
         )
       }
     })
@@ -495,11 +666,6 @@ export const checkAccessibility = (
         '此表格含合併儲存格，請人工確認每個資料格與多層表頭的關聯。',
         target,
         table,
-        {
-          successCriteria: ['1.3.1'],
-          detectionCodes: ['HM1130101C'],
-          auditCodes: ['HM1130110E'],
-        },
       )
     }
   })
@@ -512,18 +678,26 @@ export const checkAccessibility = (
     }
 
     if (mode === 'audio' && !hasVideoCaptions(video)) {
-      createIssue(issues, 'video-captions', 'required', '含音訊內容的影片缺少字幕檔，請提供 WebVTT captions。', target, video, {
-        successCriteria: ['1.2.2'],
-        auditCodes: ['GN1120200E'],
-      })
+      createIssue(
+        issues,
+        'video-captions',
+        'required',
+        '含音訊內容的影片缺少字幕檔，請提供 WebVTT captions。',
+        target,
+        video,
+      )
       return
     }
 
     if (mode === 'visual' && !hasVideoTextAlternative(video)) {
-      createIssue(issues, 'video-text-alternative', 'required', '無音訊但有重要畫面內容的影片需要文字替代說明。', target, video, {
-        successCriteria: ['1.2.3'],
-        auditCodes: ['GN1120300E', 'GN1120301E', 'GN1120302E'],
-      })
+      createIssue(
+        issues,
+        'video-text-alternative',
+        'required',
+        '無音訊但有重要畫面內容的影片需要文字替代說明。',
+        target,
+        video,
+      )
     }
   })
 

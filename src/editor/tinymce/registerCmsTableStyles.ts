@@ -177,7 +177,8 @@ const openCmsTableStylesDialog = (
   labels: CmsTableStyleLabels,
   fallbackTable: HTMLTableElement | null = null,
 ) => {
-  const table = findCmsTableFromSelection(editor) ?? (fallbackTable?.isConnected ? fallbackTable : null)
+  const table =
+    findCmsTableFromSelection(editor) ?? (fallbackTable?.isConnected ? fallbackTable : null)
 
   if (!table) {
     editor.notificationManager.open({

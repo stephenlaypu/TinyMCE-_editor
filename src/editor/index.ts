@@ -1,21 +1,3 @@
-export { default as CmsContentEditor } from './CmsContentEditor.vue'
-
-export type { AppLocale } from './i18n'
-export type { EditorContent } from './types/editorContent'
-export type {
-  UploadAdapter,
-  UploadContext,
-  UploadErrorCode,
-  UploadKind,
-  UploadResult,
-  UploadSource,
-} from './uploads/types'
-export { UploadValidationError } from './uploads/types'
-
-export { createHttpUploadAdapter, localPreviewUploadAdapter } from './uploads/adapters'
-export { imageUploadPolicy, videoUploadPolicy } from './uploads/upload'
-export { allowedIframeDomains } from './tinymce/registerMediaTools'
-
-export type EditorMode = 'strict' | 'normal'
-export type AccessibilityProfile = 'content-quality' | 'tw-aa-110'
-export type WorkspaceMode = 'basic' | 'advanced'
+// Stable host-integration surface. Publication and page-rendering helpers live in
+// `./publication` so embedding the editor does not imply adopting that pipeline.
+export * from './core'

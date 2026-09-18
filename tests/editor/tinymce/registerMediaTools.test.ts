@@ -4,7 +4,7 @@ import {
   normalizeIframeAllowAttribute,
   normalizeIframeSandboxAttribute,
   normalizeTrustedIframeElement,
-} from './registerMediaTools'
+} from '../../../src/editor/tinymce/registerMediaTools'
 
 describe('iframe hardening', () => {
   it('matches iframe hosts exactly instead of accepting lookalike domains', () => {

@@ -11,6 +11,8 @@ import { Compartment, EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { AppLocale } from '../i18n'
+import type { AccessibilityProfile } from '../accessibility/checker'
+import { findAbsoluteFontSizeUnit } from '../accessibility/fontSizeUnits'
 import type { EditorContent } from '../types/editorContent'
 import { createUniqueId } from '../utils/createUniqueId'
 
@@ -26,6 +28,7 @@ export interface AdvancedEditorLabels {
   redo: string
   search: string
   syntaxError: string
+  absoluteFontSizeUnit: (value: string) => string
   tabErrorLabel: (tab: string, count: number) => string
   preview: string
   refreshPreview: string
@@ -55,6 +58,9 @@ const props = defineProps<{
   initialTab?: CodeTab
   locale: AppLocale
   labels: AdvancedEditorLabels
+  accessibilityProfile?: AccessibilityProfile
+  enabledTabs?: readonly CodeTab[]
+  javascriptEnabled?: boolean
   disabled?: boolean
   readonly?: boolean
 }>()
@@ -66,8 +72,16 @@ const emit = defineEmits<{
   blur: []
 }>()
 
-const tabs: CodeTab[] = ['html', 'css', 'js']
-const activeTab = ref<CodeTab>(props.initialTab ?? 'html')
+const tabs: CodeTab[] = Array.from(
+  new Set<CodeTab>([
+    'html',
+    ...(props.enabledTabs ?? ['css', 'js']).filter((tab) => tab !== 'html'),
+  ]),
+)
+const canExecuteJavaScript = props.javascriptEnabled !== false && tabs.includes('js')
+const activeTab = ref<CodeTab>(
+  props.initialTab && tabs.includes(props.initialTab) ? props.initialTab : 'html',
+)
 const editorHost = ref<HTMLDivElement | null>(null)
 const editorGrid = ref<HTMLDivElement | null>(null)
 const previewFrame = ref<HTMLIFrameElement | null>(null)
@@ -238,6 +252,39 @@ const createSyntaxDiagnostics = (tab: CodeTab, state: EditorState): Diagnostic[]
     },
   })
 
+  if (tab === 'css' && props.accessibilityProfile === 'tw-aa-110') {
+    tree.iterate({
+      enter(node) {
+        if (node.name !== 'Declaration') {
+          return
+        }
+
+        const declaration = state.doc.sliceString(node.from, node.to)
+        const propertyMatch = /^\s*font-size\s*:\s*/i.exec(declaration)
+
+        if (!propertyMatch) {
+          return
+        }
+
+        const value = declaration.slice(propertyMatch[0].length)
+        const match = findAbsoluteFontSizeUnit(value)
+
+        if (!match) {
+          return
+        }
+
+        const from = node.from + propertyMatch[0].length + match.index
+        diagnostics.push({
+          from,
+          to: from + match.value.length,
+          severity: 'error',
+          source: 'Taiwan AA 1.4.4',
+          message: props.labels.absoluteFontSizeUnit(match.value),
+        })
+      },
+    })
+  }
+
   return diagnostics
 }
 
@@ -385,9 +432,7 @@ const handleToolbarKeydown = (event: KeyboardEvent) => {
   }
 
   const toolbar = event.currentTarget as HTMLElement
-  const buttons = Array.from(
-    toolbar.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'),
-  )
+  const buttons = Array.from(toolbar.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'))
   if (buttons.length === 0) {
     return
   }
@@ -523,11 +568,7 @@ const applyResizeClientX = (clientX: number) => {
 }
 
 const handleResizeMove = (event: PointerEvent) => {
-  if (
-    !isResizing.value ||
-    resizePointerId === null ||
-    event.pointerId !== resizePointerId
-  ) {
+  if (!isResizing.value || resizePointerId === null || event.pointerId !== resizePointerId) {
     return
   }
 
@@ -549,11 +590,7 @@ const handleResizeMove = (event: PointerEvent) => {
 }
 
 const stopResize = (event?: PointerEvent) => {
-  if (
-    event &&
-    resizePointerId !== null &&
-    event.pointerId !== resizePointerId
-  ) {
+  if (event && resizePointerId !== null && event.pointerId !== resizePointerId) {
     return
   }
 
@@ -672,6 +709,7 @@ const preparePreviewHtml = (source: string) => {
     .map((style) => style.textContent?.trim() || '')
     .filter(Boolean)
     .join('\n\n')
+  const inlineCss: string[] = []
 
   template.content
     .querySelectorAll('script,style,object,embed,applet,base,meta,link')
@@ -681,20 +719,39 @@ const preparePreviewHtml = (source: string) => {
     Array.from(element.attributes).forEach((attribute) => {
       const name = attribute.name.toLowerCase()
       const value = attribute.value.trim()
-      if (name.startsWith('on') || /^(?:javascript|data|vbscript):/i.test(value)) {
+      if (
+        name.startsWith('on') ||
+        name === 'srcdoc' ||
+        name === 'nonce' ||
+        /^(?:javascript|data|vbscript):/i.test(value)
+      ) {
         element.removeAttribute(attribute.name)
       }
     })
+
+    const style = element.getAttribute('style')?.trim()
+    if (style) {
+      const className = `cms-preview-inline-style-${inlineCss.length + 1}`
+      element.classList.add(className)
+      element.removeAttribute('style')
+      inlineCss.push(`.${className} { ${style} }`)
+    }
   })
 
   return {
     html: template.innerHTML,
-    css: embeddedCss,
+    css: [embeddedCss, inlineCss.join('\n')].filter(Boolean).join('\n\n'),
   }
 }
 
 const escapeRawTextEndTag = (source: string, tagName: 'style' | 'script') =>
   source.replace(new RegExp(`</${tagName}`, 'gi'), `<\\/${tagName}`)
+
+const createPreviewNonce = () => {
+  const bytes = new Uint8Array(18)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('')
+}
 
 const buildPreviewDocument = () => {
   const previewContent = preparePreviewHtml(props.modelValue.html)
@@ -703,18 +760,23 @@ const buildPreviewDocument = () => {
     [previewContent.css, props.modelValue.css].filter(Boolean).join('\n\n'),
     'style',
   )
-  const safeJavaScript = escapeRawTextEndTag(props.modelValue.js, 'script')
+  const safeJavaScript = escapeRawTextEndTag(
+    canExecuteJavaScript ? props.modelValue.js : '',
+    'script',
+  )
   const messageId = JSON.stringify(previewMessageId)
   const userJavaScript = JSON.stringify(safeJavaScript)
   const language = props.locale === 'zh-TW' ? 'zh-TW' : 'en-US'
+  const nonce = createPreviewNonce()
+  const serializedNonce = JSON.stringify(nonce)
 
   return `<!doctype html>
 <html lang="${language}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: blob:; media-src https: data: blob:; frame-src https:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; font-src data:">
-  <style>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data: blob:; media-src https: data: blob:; frame-src https:; style-src 'nonce-${nonce}'; style-src-attr 'none'; script-src 'nonce-${nonce}'; connect-src 'none'; font-src data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <style nonce="${nonce}">
     :root { color: #17231d; background: #fff; font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; }
     * { box-sizing: border-box; }
     body { margin: 0; padding: 24px; line-height: 1.7; overflow-wrap: anywhere; }
@@ -724,9 +786,10 @@ const buildPreviewDocument = () => {
 </head>
 <body>
   ${safeHtml}
-  <script>
+  <script nonce="${nonce}">
     const previewMessageId = ${messageId};
     const previewSource = 'cms-advanced-preview.js';
+    const previewNonce = ${serializedNonce};
     const userJavaScript = ${userJavaScript};
     const readStackLocation = (value) => {
       const stack = value && typeof value === 'object' && 'stack' in value ? String(value.stack || '') : '';
@@ -754,9 +817,10 @@ const buildPreviewDocument = () => {
       reportPreviewError(message, location.line, location.column);
     });
     const userScript = document.createElement('script');
+    userScript.nonce = previewNonce;
     userScript.textContent = userJavaScript + '\\n//# sourceURL=' + previewSource;
     document.body.append(userScript);
-  <\/script>
+  ${'</scr' + 'ipt>'}
 </body>
 </html>`
 }
@@ -870,11 +934,11 @@ const locatePreviewError = () => {
 
 watch(
   () => [props.modelValue.html, props.modelValue.css, props.modelValue.js] as const,
-  (values) => {
+  () => {
     formatError.value = ''
-    tabs.forEach((tab, index) => {
+    tabs.forEach((tab) => {
       const state = editorStates.get(tab)
-      const nextValue = values[index]
+      const nextValue = props.modelValue[tab]
       if (!state || state.doc.toString() === nextValue) {
         return
       }
@@ -894,10 +958,13 @@ watch(
   },
 )
 
-watch(() => props.locale, () => {
-  reconfigureCodeMirrorLocale()
-  schedulePreview()
-})
+watch(
+  () => props.locale,
+  () => {
+    reconfigureCodeMirrorLocale()
+    schedulePreview()
+  },
+)
 
 watch(
   () => [props.disabled, props.readonly] as const,
@@ -963,11 +1030,7 @@ defineExpose({
           @keydown="handleTabKeydown($event, tab)"
         >
           <span>{{ tabLabels[tab] }}</span>
-          <span
-            v-if="tabDiagnosticCounts[tab] > 0"
-            class="code-tab-error-count"
-            aria-hidden="true"
-          >
+          <span v-if="tabDiagnosticCounts[tab] > 0" class="code-tab-error-count" aria-hidden="true">
             {{ tabDiagnosticCounts[tab] > 99 ? '99+' : tabDiagnosticCounts[tab] }}
           </span>
         </button>
@@ -988,7 +1051,9 @@ defineExpose({
           @click="undoActiveDocument"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M7.4 7.4V4L2 9.4l5.4 5.4v-3.5h5.1a5 5 0 0 1 4.8 6.4l2.8.9a8 8 0 0 0-7.6-10.3H7.4Z" />
+            <path
+              d="M7.4 7.4V4L2 9.4l5.4 5.4v-3.5h5.1a5 5 0 0 1 4.8 6.4l2.8.9a8 8 0 0 0-7.6-10.3H7.4Z"
+            />
           </svg>
         </button>
         <button
@@ -1000,7 +1065,9 @@ defineExpose({
           @click="redoActiveDocument"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M16.6 7.4V4L22 9.4l-5.4 5.4v-3.5h-5.1a5 5 0 0 0-4.8 6.4l-2.8.9a8 8 0 0 1 7.6-10.3h5.1Z" />
+            <path
+              d="M16.6 7.4V4L22 9.4l-5.4 5.4v-3.5h-5.1a5 5 0 0 0-4.8 6.4l-2.8.9a8 8 0 0 1 7.6-10.3h5.1Z"
+            />
           </svg>
         </button>
         <button
@@ -1012,7 +1079,9 @@ defineExpose({
           @click="openCodeSearch"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M10.5 4a6.5 6.5 0 1 0 3.98 11.64L19.84 21 22 18.84l-5.36-5.36A6.5 6.5 0 0 0 10.5 4Zm0 3a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z" />
+            <path
+              d="M10.5 4a6.5 6.5 0 1 0 3.98 11.64L19.84 21 22 18.84l-5.36-5.36A6.5 6.5 0 0 0 10.5 4Zm0 3a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Z"
+            />
           </svg>
         </button>
         <span class="advanced-toolbar-separator" aria-hidden="true"></span>
@@ -1044,10 +1113,14 @@ defineExpose({
           @click="toggleFullscreen"
         >
           <svg v-if="!isFullscreen" aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M7 3H3v4h2V5h2V3Zm14 4V3h-4v2h2v2h2ZM5 17H3v4h4v-2H5v-2Zm16 0h-2v2h-2v2h4v-4Z" />
+            <path
+              d="M7 3H3v4h2V5h2V3Zm14 4V3h-4v2h2v2h2ZM5 17H3v4h4v-2H5v-2Zm16 0h-2v2h-2v2h4v-4Z"
+            />
           </svg>
           <svg v-else aria-hidden="true" viewBox="0 0 24 24">
-            <path d="M3 8h5V3H6v3H3v2Zm13-5v5h5V6h-3V3h-2ZM8 21v-5H3v2h3v3h2Zm13-5h-5v5h2v-3h3v-2Z" />
+            <path
+              d="M3 8h5V3H6v3H3v2Zm13-5v5h5V6h-3V3h-2ZM8 21v-5H3v2h3v3h2Zm13-5h-5v5h2v-3h3v-2Z"
+            />
           </svg>
         </button>
       </div>
@@ -1094,7 +1167,12 @@ defineExpose({
       <section class="live-preview-panel" :aria-label="labels.preview">
         <header class="live-preview-header">
           <h2>{{ labels.preview }}</h2>
-          <button type="button" class="preview-refresh" :disabled="disabled" @click="refreshPreview">
+          <button
+            type="button"
+            class="preview-refresh"
+            :disabled="disabled"
+            @click="refreshPreview"
+          >
             {{ labels.refreshPreview }}
           </button>
         </header>
@@ -1267,7 +1345,7 @@ defineExpose({
   opacity: 0.45;
 }
 
-.editor-splitter[aria-disabled="true"] {
+.editor-splitter[aria-disabled='true'] {
   cursor: not-allowed;
   opacity: 0.45;
 }
@@ -1287,7 +1365,7 @@ defineExpose({
   padding: 8px 12px;
   color: #842029;
   background: #f8d7da;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 0.8rem;
   overflow-wrap: anywhere;
 }

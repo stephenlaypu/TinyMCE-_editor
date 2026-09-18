@@ -1,6 +1,6 @@
 import type { AstNode, Editor } from 'tinymce'
 import type { AppLocale } from '../i18n'
-import type { UploadAdapter } from '../uploads/types'
+import type { UploadAdapter, UploadResult } from '../uploads/types'
 import { UploadValidationError } from '../uploads/types'
 import { uploadFile, videoUploadPolicy } from '../uploads/upload'
 
@@ -43,6 +43,7 @@ export interface MediaToolOptions {
   uploadAdapter?: UploadAdapter
   locale: AppLocale
   allowedIframeDomains?: readonly string[]
+  onUploadComplete?: (result: UploadResult) => void
 }
 
 export const allowedIframeDomains = [
@@ -421,10 +422,7 @@ const selectMediaObject = (editor: Editor, element: HTMLElement) => {
 }
 
 const isInsideMediaObject = (editor: Editor, element: Element): boolean => {
-  return Boolean(
-    findContextMediaObject(editor, element) ||
-    element.closest('figure.cms-video'),
-  )
+  return Boolean(findContextMediaObject(editor, element) || element.closest('figure.cms-video'))
 }
 
 const findEditableIframe = (editor: Editor): EditableIframe | null => {
@@ -451,7 +449,7 @@ const findEditableIframe = (editor: Editor): EditableIframe | null => {
 
 const getIframeSourceHtml = (target: EditableIframe | null): string => {
   const html = target?.previewObject?.getAttribute('data-mce-html')
-  return html ? unescape(html) : target?.iframe.outerHTML ?? ''
+  return html ? unescape(html) : (target?.iframe.outerHTML ?? '')
 }
 
 const updateIframePreviewHtml = (target: EditableIframe, iframe: HTMLIFrameElement) => {
@@ -519,7 +517,10 @@ const getVideoAccessibilityMode = (video: HTMLVideoElement | undefined): VideoAc
 }
 
 const getVideoCaptionsTrack = (video: HTMLVideoElement | undefined): HTMLTrackElement | null => {
-  return video?.querySelector<HTMLTrackElement>('track[kind="captions"], track[kind="subtitles"]') ?? null
+  return (
+    video?.querySelector<HTMLTrackElement>('track[kind="captions"], track[kind="subtitles"]') ??
+    null
+  )
 }
 
 const getVideoTextAlternative = (figure: HTMLElement | null): string => {
@@ -641,8 +642,7 @@ const insertVideo = (editor: Editor, labels: MediaToolLabels, options: MediaTool
         {
           type: 'input',
           name: 'captionsUrl',
-          label: labels.captionsUrl ,
-          
+          label: labels.captionsUrl,
         },
         {
           type: 'grid',
@@ -661,15 +661,15 @@ const insertVideo = (editor: Editor, labels: MediaToolLabels, options: MediaTool
             { type: 'input', name: 'height', label: labels.height },
           ],
         },
-        { 
+        {
           type: 'checkbox',
           name: 'controls',
-          label: labels.controls
+          label: labels.controls,
         },
-        { 
+        {
           type: 'checkbox',
           name: 'autoplay',
-          label: labels.autoplay
+          label: labels.autoplay,
         },
       ],
     },
@@ -706,6 +706,7 @@ const insertVideo = (editor: Editor, labels: MediaToolLabels, options: MediaTool
             maxFileSize: videoUploadPolicy.maxFileSize,
             locale: options.locale,
           })
+          options.onUploadComplete?.(result)
           api.setData({ sourceUrl: result.src })
           openTimedNotification(editor, labels.uploadComplete, 'success')
         } catch (error) {
@@ -783,7 +784,10 @@ export const openEmbedIframeDialog = (
     initialData: {
       sourceUrl: initialIframe?.src ?? '',
       embedCode: getIframeSourceHtml(editableIframe),
-      title: initialIframe?.title ?? editableIframe?.previewObject?.getAttribute('data-mce-p-title') ?? '',
+      title:
+        initialIframe?.title ??
+        editableIframe?.previewObject?.getAttribute('data-mce-p-title') ??
+        '',
       width: initialIframe?.width || '640',
       height: initialIframe?.height || '360',
       allowFullscreen: initialIframe?.hasAttribute('allowfullscreen') ?? true,
@@ -797,7 +801,9 @@ export const openEmbedIframeDialog = (
       const pastedIframe = data.embedCode.trim()
         ? parseIframeEmbedCode(editor, data.embedCode, domains)
         : null
-      const sourceUrl = pastedIframe ? pastedIframe.src : normalizeIframeUrl(data.sourceUrl, domains)
+      const sourceUrl = pastedIframe
+        ? pastedIframe.src
+        : normalizeIframeUrl(data.sourceUrl, domains)
 
       if (!sourceUrl) {
         openTimedNotification(editor, labels.iframeDomainNotAllowed, 'error')

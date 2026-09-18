@@ -11,6 +11,8 @@ export interface UploadContext {
 
 export interface UploadResult {
   readonly src: string
+  readonly fileGuid?: string
+  readonly fileState?: 'active' | 'temporary'
   readonly alt?: string
   readonly title?: string
   readonly width?: number

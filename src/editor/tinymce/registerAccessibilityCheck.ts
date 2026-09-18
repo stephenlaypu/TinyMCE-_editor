@@ -168,10 +168,7 @@ const selectForRepair = (editor: Editor, issue: AccessibilityIssue): boolean => 
   return true
 }
 
-const repairIssue = (
-  editor: Editor,
-  issue: AccessibilityIssue,
-): boolean => {
+const repairIssue = (editor: Editor, issue: AccessibilityIssue): boolean => {
   clearActiveIssue(editor, true)
 
   if (!selectForRepair(editor, issue)) {
@@ -287,8 +284,8 @@ const renderDialogHtml = (
 
 const prepareAccessibilityDialog = (editor: Editor, closeDialog: () => void) => {
   window.requestAnimationFrame(() => {
-    const dialog = Array.from(document.querySelectorAll<HTMLElement>('.tox-dialog')).find((element) =>
-      element.querySelector('.cms-a11y-dialog'),
+    const dialog = Array.from(document.querySelectorAll<HTMLElement>('.tox-dialog')).find(
+      (element) => element.querySelector('.cms-a11y-dialog'),
     )
 
     if (!dialog) {
@@ -373,7 +370,9 @@ export const registerAccessibilityCheck = (
       syncActiveIssue()
     }
 
-    const buildDialog = (): Parameters<typeof editor.windowManager.open<AccessibilityDialogData>>[0] => ({
+    const buildDialog = (): Parameters<
+      typeof editor.windowManager.open<AccessibilityDialogData>
+    >[0] => ({
       title: 'Accessibility Checker',
       size: 'medium',
       body: {

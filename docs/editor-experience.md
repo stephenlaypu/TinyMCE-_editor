@@ -128,7 +128,7 @@ App 支援 `Alt + 0`。
 部署時可用 `VITE_EDITOR_MODE` 選擇格式策略：
 
 - `strict`：預設；已管理格式輸出 CMS class，使用受限制的 AA 安全色票。
-- `normal`：保留 TinyMCE 原生格式與色票，並提供一般／進階工作區；CMS 範本、媒體與 Accessibility Checker 仍可使用。
+- `normal`：保留 TinyMCE 原生格式與色票，並提供一般／進階工作區；字級選單顯示熟悉的 px 尺寸、實際輸出 rem。CMS 範本、媒體與 Accessibility Checker 仍可使用。
 
 strict mode 並非目前就會移除所有 inline style。未管理但合法的舊內容 style 仍可能保留，正式儲存與前台仍需搭配 CMS sanitizer policy。
 
@@ -413,13 +413,15 @@ Editor 啟用 TinyMCE 原生 `draggable_modal`，因此圖片、連結與其他 
 - duplicate id
 - form label
 - button accessible name
+- 清單 `ul` / `ol` / `li` 結構
+- ARIA ID 參照是否存在
 - 文字與有效背景的色彩對比（一般文字 `4.5:1`；大字 `3:1`）
 - video captions / text alternative
 
 部署時可用 `VITE_ACCESSIBILITY_PROFILE` 選擇：
 
 - `content-quality`：預設，供所有網站使用。
-- `tw-aa-110`：增加裝飾圖片與複雜表格關聯等台灣現行規範人工確認提醒。
+- `tw-aa-110`：增加固定字級單位、局部語言標籤、圖片 alt 品質、正數 `tabindex`、自動播放聲音、移動／閃爍內容、裝飾圖片與複雜表格關聯等內容預檢或人工確認提醒。
 
 定位行為：
 
@@ -427,7 +429,7 @@ Editor 啟用 TinyMCE 原生 `draggable_modal`，因此圖片、連結與其他 
 - 目前 issue 會加上 `cms-a11y-active-issue` class
 - 關閉 dialog 時會清除高亮
 
-Checker 只預檢編輯器產出的內容片段，不代表完整網站已通過台灣 AA 標章人工檢測。
+Checker 只處理使用者能在 TinyMCE 新增或修改的內容，不負責 admin shell 或前台整頁行為，也不代表完整網站已通過台灣 AA 標章人工檢測。
 
 ## 通知體驗
 

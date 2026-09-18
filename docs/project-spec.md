@@ -32,7 +32,9 @@ Vite port：
 
 - `src/App.vue`：demo shell，只負責範例內容、語系切換與環境變數轉接
 - `src/editor/CmsContentEditor.vue`：可重用 editor 入口、TinyMCE init、工作區狀態與公開 API
-- `src/editor/index.ts`：供其他 Vue 3 後台引用的元件、型別與 upload helper 匯出
+- `src/editor/index.ts`／`src/editor/core.ts`：供其他 Vue 3 後台引用的穩定核心入口，只包含 editor、policy、upload 與 ContentBlock data adapter
+- `src/editor/publication.ts`：CSS scope、媒體解析、跨區塊識別與整頁發布準備工具；不是嵌入 editor 的必要入口
+- `src/editor/contentBlockData.ts`：銜接 admin 開放 JSON data；預設只寫 HTML，保留未授權的 CSS、JavaScript 與未知欄位
 - `src/editor/components/TinyMceEditor.vue`：`@tinymce/tinymce-vue` wrapper
 - `src/editor/components/AdvancedContentEditor.vue`：normal mode 的 CodeMirror 6 HTML / CSS / JavaScript 編輯與隔離預覽
 - `src/editor/types/editorContent.ts`：一般與進階工作區共用的 `{ html, css, js }` 資料模型
@@ -43,6 +45,7 @@ Vite port：
 - `src/i18n.ts`：只供 demo app 使用的 vue-i18n instance
 - `src/editor/styles/editor.css`：editor、TinyMCE UI 覆寫與 a11y dialog 樣式
 - `src/style.css`：僅供 demo shell 使用的頁面樣式
+- `tests/editor/*`：依 `src/editor` 目錄結構排列的測試；不屬於搬入後台的 runtime 模組
 - `public/cms-editor/langs/zh_TW.js`：TinyMCE zh-TW 語言包
 - `public/cms-editor/tinymce/*`：TinyMCE iframe content 與 help i18n assets
 - `public/cms-editor/cms-content/templates.css`：CMS 內容範本樣式入口
@@ -55,7 +58,7 @@ Vite port：
 部署模式由 `VITE_EDITOR_MODE` 決定：
 
 - `strict`：預設值；已管理的字體、字級、對齊、清單樣式、顏色與表格樣式使用 CMS class，色票限制為 AA 安全組合。
-- `normal`：提供一般／進階工作區。一般工作區使用 TinyMCE 原生格式設定與色票，不套用 strict mode 的 class 正規化；進階工作區使用 CodeMirror 6 編輯 HTML、CSS、JavaScript。CMS 範本、媒體與可及性工具仍保留在一般工作區。
+- `normal`：提供一般／進階工作區。一般工作區使用 TinyMCE 原生格式設定與色票，不套用 strict mode 的 class 正規化；字級選單保留 px 標示但輸出 rem，直接輸入字級時預設單位也是 rem。進階工作區使用 CodeMirror 6 編輯 HTML、CSS、JavaScript。CMS 範本、媒體與可及性工具仍保留在一般工作區。
 
 strict mode 的 Editor 輸出會做基本 HTML hardening，再進行 CMS class 正規化。normal mode 不執行 component 層的 destructive hardening，以保留受信任作者輸入的 HTML；TinyMCE parser 仍可能在使用者實際套用一般模式編輯時正規化 markup。兩種模式都不能取代儲存端 / 前台 sanitizer，normal mode 尤其需要由 CMS 權限與發布環境界定可信內容。
 
@@ -68,7 +71,7 @@ strict mode 的 Editor 輸出會做基本 HTML hardening，再進行 CMS class �
 - `skin: false`
 - `promotion: false`
 - `branding: false`
-- `automatic_uploads: true`
+- `automatic_uploads`：`mediaInsertion="enabled"` 時為 `true`；停用媒體插入時為 `false`
 - `resize_img_proportional: true`
 - `object_resizing: 'img,table,figure.image,div,video,iframe,span.mce-preview-object'`
 - `table_class_list` / `table_row_class_list` / `table_cell_class_list`：提供 `mce-no-match` 選項「保留既有樣式」，避免 Table / Row / Cell Properties 在未明確修改 class 時覆寫既有多 class
@@ -91,6 +94,10 @@ strict mode 的 Editor 輸出會做基本 HTML hardening，再進行 CMS class �
 - `visualblocks`
 - `wordcount`
 
+`mediaInsertion="disabled"` 用於後端尚未提供 RichText 內嵌資產引用契約的宿主。此模式會從預設值與宿主覆寫值移除 `image`／`media` plugins、`image`／`insertvideo`／`embediframe` toolbar buttons、媒體 context menu、upload handler 與媒體 resizing；既有 HTML 的媒體節點仍交由 TinyMCE schema、strict mode hardening 與 iframe 白名單處理，不會只因插入工具停用而主動刪除。這項 UI 能力限制不能取代後端 sanitizer 與發布安全邊界。
+
+`cmsTemplatesEnabled=false` 會移除並停止註冊測試性 CMS 內容範本；`cmsTableStylesEnabled=false` 會移除並停止註冊 CMS 特規表格樣式，但保留 TinyMCE 基本表格 plugin。兩者都會再次過濾宿主傳入的 toolbar 與 context menu，避免設定值把已停用入口加回。
+
 Toolbar：
 
 ```text
@@ -107,7 +114,19 @@ undo redo | bold italic strikethrough | blocks fontfamily fontsize | alignleft a
 
 ## Normal mode 進階工作區
 
-可重用 component 只有在 `mode="normal"` 時顯示「一般／進階」切換；demo 才使用 `VITE_EDITOR_MODE` 決定傳入值。進階元件使用 dynamic import，在使用者切換前不載入 CodeMirror chunk。
+可重用 component 只有在 `mode="normal"` 且 `advancedWorkspaceEnabled=true` 時顯示「一般／進階」切換；demo 才使用 `VITE_EDITOR_MODE` 決定傳入值。`advancedWorkspaceEnabled` 只接收宿主完成的權限判斷結果，不能取代後端欄位授權。進階元件使用 dynamic import，在使用者切換前不載入 CodeMirror chunk。
+
+`EditorPolicy` 將目前已實作的能力收斂為單一宿主設定：mode、accessibility profile、進階工作區、CSS、JavaScript、媒體插入、CMS 範本及 CMS 表格樣式。`customCssEnabled` 與 `customJavaScriptEnabled` 分開控制分頁；關閉 JavaScript 時 preview 不會執行既有 `js`，但資料欄位仍原樣保存。這讓「可編輯 HTML」不再自動等同「可執行 JavaScript」。
+
+`analyzeContentCapabilities()` 以不修改內容的方式產生能力報告；`evaluateContentForPublication()` 再依 `PublicationPolicy` 產生發布 blocker。Editor component 也透過 template ref 暴露 `getCapabilityReport()` 與 `getPublicationReport(policy)`。這一層用於 admin 儲存／發布流程的前端預檢，實際授權、sanitization 與發布環境仍由後端負責。
+
+CSS 使用 `@codemirror/lang-css` 的 Lezer grammar 解析。`scopeCss()` 對非全域 RuleSet 的 selector list 插入宿主 scope，支援 at-rule 與 CSS nesting，排除 keyframes；無效語法、無效 scope selector 或包含 `html`／`body`／`:root` 時 fail closed。這是可重用的前端發布轉換基礎，不代表後端發布服務已完成。
+
+`findContentIdentifierCollisions()` 檢查同頁多區塊的 ID 與 radio name 衝突。`namespaceContentIdentifiers()` 只建立發布副本，會協調改寫 HTML、ARIA、fragment reference、SVG reference、CSS ID selector 與 radio group；含自訂 JavaScript、duplicate ID 或無效 CSS 時 fail closed。作者儲存內容不會被此工具改寫。
+
+`evaluatePageContentForPublication()` 將單區塊 `PublicationPolicy` 與跨區塊衝突整合成純分析報告。識別子衝突策略支援 `deny`、`namespace` 與 `isolated-document`；重複 block key 一律阻擋。這個 API 不產生前台頁面，也不代表宿主已實作 namespace 或 iframe renderer。
+
+`preparePageContentForPublication()` 可以在預檢通過後建立不修改草稿的發布副本。`namespace` 策略會只轉換受衝突影響的區塊，然後重新檢查轉換後的全頁識別子；仍有衝突時會回傳原始副本並 fail closed。`isolated-document` 只產生 renderer requirement，不會在 editor 模組建立正式 iframe。
 
 TinyMCE core 會先初始化，再以 dynamic import 載入 icons、theme、DOM model 與 plugins，避免第三方 UMD modules 在 core 建立 `window.tinymce` 前執行。demo 的整個 `CmsContentEditor` 也使用 async component，宿主後台應在 editor route 採用相同 lazy-loading 邊界。
 
@@ -428,6 +447,7 @@ Serializer 會針對 `iframe` 與 `video` 同步尺寸：
 自訂 accessibility checker 由以下檔案組成：
 
 - `src/editor/accessibility/checker.ts`：檢查規則
+- `src/editor/accessibility/twAa110Catalog.ts`：TinyMCE 內容規則與官方成功準則、檢測碼、稽核評量碼對照
 - `src/editor/tinymce/registerAccessibilityCheck.ts`：TinyMCE UI、定位、高亮、修復入口
 
 App 設定：
@@ -455,15 +475,22 @@ Checker 依處理優先序分成「必須修正」、「需要確認」與「改
 - `duplicate-id`
 - `form-label`
 - `button-name`
+- `list-structure`
+- `aria-reference`
 - `text-contrast`
 - `video-captions`
 - `video-text-alternative`
+- `language-tag`（`tw-aa-110`）
+- `font-size-absolute-unit`（`tw-aa-110`）
 
 目前需要確認：
 
 - table caption 是否需要補充表格目的。
 - `tw-aa-110` profile 下，空白圖片 alt 是否確實為裝飾圖。
 - `tw-aa-110` profile 下，含合併儲存格的表格是否正確建立多層表頭關聯。
+- `tw-aa-110` profile 下，圖片 alt 是否只是通用詞或檔名。
+- `tw-aa-110` profile 下，正數 `tabindex` 是否破壞自然焦點順序。
+- `tw-aa-110` profile 下，自動播放聲音及移動／閃爍內容是否有適當控制。
 
 目前改善建議：
 
@@ -485,7 +512,7 @@ Checker 專用 backdrop 會攔截直接點擊並透過 Dialog API 關閉視窗�
 - `table-header`：執行 TinyMCE table row header command
 - `text-contrast`：定位並高亮文字，提示使用文字／背景色票調整後重新檢查
 
-Checker 是編輯器內容片段的預檢，不檢查完整頁面的語言、landmark、頁面 title、導覽與前台執行結果，也不代表已通過台灣 AA 標章人工檢測。
+Checker 的實作範圍只涵蓋使用者能在 TinyMCE 新增或修改的內容。它不接管 admin shell、完整頁面的預設語言、landmark、頁面 title、網站導覽與前台執行結果，也不代表已通過台灣 AA 標章人工檢測。
 
 ## 上傳架構
 
@@ -527,9 +554,19 @@ HTTP response：
 
 ```json
 {
-  "src": "https://example.com/uploads/file.jpg"
+  "src": "https://example.com/uploads/file.jpg",
+  "fileGuid": "7f5d...",
+  "fileState": "temporary"
 }
 ```
+
+`fileGuid` 與 `fileState` 是成對的可選欄位；demo blob adapter 不回傳，正式檔案庫 adapter 應同時回傳。Editor 會將它們標記在新上傳的 image、video source 等節點。
+
+`extractMediaReferenceManifest()` 從 HTML 擷取 image、video、audio、source、poster、track 與 srcset 引用。`diffMediaReferenceManifests()` 產生建立、保留、解除與待啟用的 `fileGuid` 集合。`PublicationPolicy` 會無條件阻擋 blob、temporary、admin-only、invalid 與缺少生命週期的 managed media，並分別設定 unmanaged media 與 data URL 是否可發布。
+
+`resolveManagedMediaReferences()` 以 `fileGuid -> publicUrl` 對應建立 active 媒體副本。它拒絕 blob、data、admin／temp path、缺少解析、重複衝突解析、URL／GUID 錯置與無結構化對應的 managed srcset；任一失敗都原樣回傳內容。
+
+`resolvePageManagedMediaReferences()` 將此行為提升為整頁原子操作。`prepareResolvedPageContentForPublication()` 再以固定順序組合整頁媒體解析、發布政策與識別子命名空間準備；任一階段失敗不會產生部分可發布結果。
 
 ## i18n
 
@@ -549,7 +586,7 @@ TinyMCE 語言：
 
 ## 目前限制
 
-- `pnpm test` 目前覆蓋 upload 驗證、iframe hardening、非安全來源可用的唯一 ID，以及同頁多個進階 editor 的 DOM ID／ARIA 關係
+- `pnpm test` 的測試集中在 `tests/editor`，涵蓋 accessibility、內容與發布 policy、媒體引用、upload、iframe hardening、格式設定、workspace round-trip，以及進階 editor 行為
 - 不發布 npm package；跨後台整合採同步 `src/editor` 與 `public/cms-editor` 原始碼／資產目錄
 - 沒有內建正式 upload API；HTTP 上傳透過 adapter 抽象，local preview 只由 demo 明確啟用
 - 沒有 TinyMCE premium Accessibility Checker

@@ -2,27 +2,34 @@
 import { computed, defineAsyncComponent, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { AppLocale } from './editor/i18n'
+import type { EditorPolicyOverride } from './editor/policy'
 import type { EditorContent } from './editor/types/editorContent'
 import { createHttpUploadAdapter, localPreviewUploadAdapter } from './editor/uploads/adapters'
 
 const editorLoadError = ref('')
-const CmsContentEditor = defineAsyncComponent(
-  async () => {
-    try {
-      return await import('./editor/CmsContentEditor.vue')
-    } catch (error) {
-      editorLoadError.value = error instanceof Error ? error.message : String(error)
-      throw error
-    }
-  },
-)
+const CmsContentEditor = defineAsyncComponent(async () => {
+  try {
+    return await import('./editor/CmsContentEditor.vue')
+  } catch (error) {
+    editorLoadError.value = error instanceof Error ? error.message : String(error)
+    throw error
+  }
+})
 
 const { locale, t } = useI18n()
 const editorMode = import.meta.env.VITE_EDITOR_MODE === 'normal' ? 'normal' : 'strict'
 const accessibilityProfile =
-  import.meta.env.VITE_ACCESSIBILITY_PROFILE === 'tw-aa-110'
-    ? 'tw-aa-110'
-    : 'content-quality'
+  import.meta.env.VITE_ACCESSIBILITY_PROFILE === 'tw-aa-110' ? 'tw-aa-110' : 'content-quality'
+const editorPolicy: EditorPolicyOverride = {
+  mode: editorMode,
+  accessibilityProfile,
+  advancedWorkspaceEnabled: editorMode === 'normal',
+  customCssEnabled: editorMode === 'normal',
+  customJavaScriptEnabled: editorMode === 'normal',
+  mediaInsertion: 'enabled',
+  cmsTemplatesEnabled: true,
+  cmsTableStylesEnabled: true,
+}
 const uploadAdapter = import.meta.env.VITE_UPLOAD_ENDPOINT
   ? createHttpUploadAdapter(import.meta.env.VITE_UPLOAD_ENDPOINT)
   : localPreviewUploadAdapter
@@ -86,8 +93,7 @@ const clearContent = () => {
       :key="locale"
       v-model="content"
       :locale="locale as AppLocale"
-      :mode="editorMode"
-      :accessibility-profile="accessibilityProfile"
+      :editor-policy="editorPolicy"
       :upload-adapter="uploadAdapter"
     />
 

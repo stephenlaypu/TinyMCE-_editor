@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createUniqueId } from './createUniqueId'
+import { createUniqueId } from '../../../src/editor/utils/createUniqueId'
 
 describe('createUniqueId', () => {
   it('creates stable prefixes and unique values without secure-context APIs', () => {

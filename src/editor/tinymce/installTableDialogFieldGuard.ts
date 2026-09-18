@@ -182,7 +182,8 @@ export const installTableDialogFieldGuard = (editor: TinyMCEEditor) => {
 
     const selectedElement = editor.selection.getNode()
     const cell =
-      selectedElement.tagName.toLowerCase() === 'td' || selectedElement.tagName.toLowerCase() === 'th'
+      selectedElement.tagName.toLowerCase() === 'td' ||
+      selectedElement.tagName.toLowerCase() === 'th'
         ? (selectedElement as HTMLTableCellElement)
         : (selectedElement.closest?.('td,th') as HTMLTableCellElement | null)
 
@@ -225,8 +226,7 @@ export const installTableDialogFieldGuard = (editor: TinyMCEEditor) => {
 
     return [...cmsTableBorderWidthClassByValue.keys()].map((value) => ({
       value,
-      label:
-        value === '0' ? (locale === 'en-US' ? 'No border' : '無邊框') : `${value} px`,
+      label: value === '0' ? (locale === 'en-US' ? 'No border' : '無邊框') : `${value} px`,
     }))
   }
 
@@ -272,10 +272,7 @@ export const installTableDialogFieldGuard = (editor: TinyMCEEditor) => {
       if (currentValue && !options.some((option) => option.value === currentValue)) {
         options.unshift({
           value: currentValue,
-          label:
-            locale === 'en-US'
-              ? `Current value: ${currentValue}`
-              : `目前值：${currentValue}`,
+          label: locale === 'en-US' ? `Current value: ${currentValue}` : `目前值：${currentValue}`,
         })
       }
 

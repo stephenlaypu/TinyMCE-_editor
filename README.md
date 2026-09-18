@@ -1,6 +1,8 @@
 # TinyMCE Editor
 
-使用 Vue 3、TypeScript、Vite 與 TinyMCE 8 建立的自託管 CMS 編輯器。專案包含 demo，以及可搬入其他 Vue 3 後台的 `src/editor` 原始碼模組。
+使用 Vue 3、TypeScript、Vite 與 TinyMCE 8.9.1 建立的自託管 CMS 編輯器。專案包含 demo，以及可搬入其他 Vue 3 後台的 `src/editor` 原始碼模組。
+
+可重用 component 採保守預設：strict、台灣 AA profile，並停用進階工作區、媒體插入、測試範本及特規表格。`src/App.vue` 是功能驗證 demo，會明確開啟這些能力；demo 行為不可直接當成 admin 上線設定。
 
 ## 環境需求
 
@@ -35,11 +37,11 @@ Copy-Item .env.example .env
 
 修改 `.env` 後需重新啟動 `pnpm dev`。
 
-## 圖片與影片上傳
+## Demo 圖片與影片上傳
 
 未設定 `VITE_UPLOAD_ENDPOINT` 時，demo 使用 `blob:` URL 做本機預覽，重新整理後不會保留。
 
-正式上傳使用 `multipart/form-data`：
+內建通用 HTTP adapter 使用 `multipart/form-data`：
 
 - `file`：圖片或影片檔案
 - `kind`：`image` 或 `video`
@@ -48,9 +50,15 @@ Copy-Item .env.example .env
 
 ```json
 {
-  "src": "https://example.com/uploads/file.jpg"
+  "src": "https://example.com/uploads/file.jpg",
+  "fileGuid": "7f5d...",
+  "fileState": "temporary"
 }
 ```
+
+`fileGuid` 與 `fileState` 若提供就必須成對回傳。正式檔案庫整合還必須在發布前將 temporary 檔案轉為 active，並以 `fileGuid` 解析永久公開 URL；不可直接發布 `blob:`、`/temp/` 或 admin download URL。
+
+目前 admin 的 Message asset endpoint 回傳 ContentBlock 資料，不符合這個通用 adapter 的 response contract，也尚未證實 RichText 多媒體引用與永久公開 URL 流程；正式接入前應維持 `mediaInsertion="disabled"`，不可直接填入 endpoint 就宣稱完成。
 
 檔案限制：
 
@@ -79,6 +87,7 @@ pnpm test
 ```text
 src/App.vue          demo 頁面
 src/editor/          可重用的 editor 原始碼
+tests/editor/        editor 測試（依 src/editor 結構排列，不隨 runtime 搬移）
 public/cms-editor/   語言包與自託管靜態資源
 docs/                規格與整合文件
 ```
@@ -87,6 +96,8 @@ docs/                規格與整合文件
 
 ## 相關文件
 
+- [Editor 現況與缺口盤點](docs/current-state-audit.md)
+- [admin RichText 整合契約盤點](docs/admin-integration-contract.md)
 - [專案規格](docs/project-spec.md)
 - [Editor 使用體驗](docs/editor-experience.md)
 - [Vue 3 專案整合說明](docs/integration.md)

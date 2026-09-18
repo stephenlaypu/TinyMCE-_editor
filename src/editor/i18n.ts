@@ -25,6 +25,8 @@ export const editorMessages = {
         redo: '重做',
         search: '搜尋與取代',
         syntaxError: '語法錯誤',
+        absoluteFontSizeUnit:
+          '字級使用固定單位「{value}」，請改用 rem、em、百分比或受管理的 CMS 字級 class。',
         tabErrorLabelSingle: '{tab}，{count} 個語法錯誤',
         tabErrorLabelMultiple: '{tab}，{count} 個語法錯誤',
         preview: '即時預覽',
@@ -46,7 +48,8 @@ export const editorMessages = {
         openCss: '前往 CSS',
         pauseCss: '暫停進階樣式',
         enableCss: '啟用進階樣式',
-        applyBasicChangesConfirm: '一般模式已修改內容，但 TinyMCE 可能無法完整保留原本的進階 HTML。按「是」套用一般模式修改；按「否」保留進階原始碼並繼續切換。',
+        applyBasicChangesConfirm:
+          '一般模式已修改內容，但 TinyMCE 可能無法完整保留原本的進階 HTML。按「是」套用一般模式修改；按「否」保留進階原始碼並繼續切換。',
       },
       sampleTitle: 'TinyMCE 編輯器',
       sampleBody: '這是一個使用 Vue 3、TypeScript 與 TinyMCE 建立的本地編輯器。',
@@ -64,7 +67,8 @@ export const editorMessages = {
         cancel: '取消',
         insert: '插入',
         update: '更新',
-        invalidAnchorList: '請至少保留一筆完整的文字與連結，且連結不可使用 javascript、data 或 vbscript。',
+        invalidAnchorList:
+          '請至少保留一筆完整的文字與連結，且連結不可使用 javascript、data 或 vbscript。',
       },
       cmsTableStyles: {
         button: '表格樣式',
@@ -140,6 +144,8 @@ export const editorMessages = {
         redo: 'Redo',
         search: 'Find and replace',
         syntaxError: 'Syntax error',
+        absoluteFontSizeUnit:
+          'The font size uses the fixed unit "{value}". Use rem, em, a percentage, or a managed CMS font-size class.',
         tabErrorLabelSingle: '{tab}, {count} syntax error',
         tabErrorLabelMultiple: '{tab}, {count} syntax errors',
         preview: 'Live preview',
@@ -157,11 +163,13 @@ export const editorMessages = {
         resizeValue: 'Code {code}%, preview {preview}%',
         fullscreen: 'Fullscreen',
         exitFullscreen: 'Exit fullscreen',
-        basicModeTip: 'This content includes advanced CSS or JavaScript. Basic mode applies CSS but does not run JavaScript.',
+        basicModeTip:
+          'This content includes advanced CSS or JavaScript. Basic mode applies CSS but does not run JavaScript.',
         openCss: 'Open CSS',
         pauseCss: 'Pause advanced styles',
         enableCss: 'Enable advanced styles',
-        applyBasicChangesConfirm: 'Basic mode changed this content, but TinyMCE may not fully preserve the original advanced HTML. Choose Yes to apply the basic-mode changes, or No to keep the advanced source and continue switching.',
+        applyBasicChangesConfirm:
+          'Basic mode changed this content, but TinyMCE may not fully preserve the original advanced HTML. Choose Yes to apply the basic-mode changes, or No to keep the advanced source and continue switching.',
       },
       sampleTitle: 'TinyMCE Editor',
       sampleBody: 'This is a local editor built with Vue 3, TypeScript, and TinyMCE.',
@@ -179,7 +187,8 @@ export const editorMessages = {
         cancel: 'Cancel',
         insert: 'Insert',
         update: 'Update',
-        invalidAnchorList: 'Keep at least one complete text and link pair. Links cannot use javascript, data, or vbscript.',
+        invalidAnchorList:
+          'Keep at least one complete text and link pair. Links cannot use javascript, data, or vbscript.',
       },
       cmsTableStyles: {
         button: 'CMS table styles',
@@ -209,7 +218,8 @@ export const editorMessages = {
         captionsLabel: 'Captions label',
         textAlternative: 'Text alternative description',
         captionsRequired: 'Videos with audio content require a captions file URL.',
-        textAlternativeRequired: 'Videos with important visual content require a text alternative description.',
+        textAlternativeRequired:
+          'Videos with important visual content require a text alternative description.',
         iframeTitle: 'Iframe title',
         width: 'Width (px)',
         height: 'Height (px)',
